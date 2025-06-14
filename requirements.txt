@@ -1,0 +1,4 @@
+streamlit
+requests
+nse
+# Add any other dependencies your code uses
