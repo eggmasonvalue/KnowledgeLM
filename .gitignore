@@ -19,7 +19,7 @@ venv/
 Thumbs.db
 
 # Artifacts and downloads
-artifacts/
+*_artifacts/
 *.pdf
 *.xlsx
 *.csv
