@@ -1,9 +1,10 @@
 # NSE Company Wiki Downloader
 
 A Streamlit app to download and organize NSE company announcements and attachments.
-This is intended to be used as a companion to tools like NotebookLM
 
-BSE does not allow you to filter for filings for over 12 months.
+## Value Proposition
+This is intended to be used as a companion to tools like NotebookLM to supplement fundamental analysis of NSE-listed companies
+NSE doesn't have limits on the from and to date ranges(unlike BSE) but it lacks the option to batch download documents
 
 ## Features
 
