@@ -1,7 +1,10 @@
+import csv
 from datetime import datetime
 from pathlib import Path
-from nse import NSE
 from typing import Dict, Any, Tuple, List
+import json
+
+from nse import NSE
 
 DOWNLOAD_CATEGORIES = {
     "transcripts": {
@@ -33,8 +36,30 @@ DOWNLOAD_CATEGORIES = {
         ),
         "label": "press release"
     },
+    "credit_rating": {
+        "enabled_arg": "download_credit_rating",
+        "filter": lambda item: (
+            item.get("desc", "").strip().lower() == "credit rating"
+            and "attchmntFile" in item
+            and item["attchmntFile"]
+        ),
+        "label": "credit rating"
+    },
+    "related_party_txns": {
+        "enabled_arg": "download_related_party_txns",
+        "filter": lambda item: (
+            item.get("desc", "").strip().lower() in [
+                "related party transaction",
+                "related party transactions"
+            ]
+            and "attchmntFile" in item
+            and item["attchmntFile"]
+        ),
+        "label": "related party transaction"
+    },
     # Add more categories here as needed
 }
+
 
 def download_announcements(
     symbol: str,
@@ -44,11 +69,14 @@ def download_announcements(
     download_transcripts: bool = True,
     download_investor_presentations: bool = True,
     download_press_releases: bool = True,
+    download_credit_rating: bool = True,
+    download_related_party_txns: bool = True,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
     Download announcements for a symbol between from_date and to_date.
     Dates should be in 'YYYY-MM-DD' format.
     Optionally download files by category.
+
     Returns:
         data: List of announcement dicts
         category_counts: Dict of category label to count
@@ -59,12 +87,18 @@ def download_announcements(
     from_dt = datetime.strptime(from_date, "%Y-%m-%d")
     to_dt = datetime.strptime(to_date, "%Y-%m-%d")
     data = nse.announcements(symbol=symbol, from_date=from_dt, to_date=to_dt)
-    
+
+    # Store data into a file
+    # with open(Path(download_folder) / f"{symbol}_announcements.json", "w") as f:
+    #     json.dump(data, f, default=str, indent=2)
+
     # Download files by category using lookup table
     args = {
         "download_transcripts": download_transcripts,
         "download_investor_presentations": download_investor_presentations,
         "download_press_releases": download_press_releases,
+        "download_credit_rating": download_credit_rating,
+        "download_related_party_txns": download_related_party_txns,
     }
     category_counts = {}
     for cat, meta in DOWNLOAD_CATEGORIES.items():
