@@ -3,6 +3,8 @@
 A Streamlit app to download and organize NSE company announcements and attachments.
 This is intended to be used as a companion to tools like NotebookLM
 
+BSE does not allow you to filter for filings for over 12 months.
+
 ## Features
 
 - Download announcements and attachments by category (Transcripts, Investor Presentations, Credit Rating, Related Party Transactions).
