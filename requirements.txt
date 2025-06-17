@@ -1,4 +1,4 @@
 streamlit
-requests
+pandas
+pathlib
 nse
-# Add any other dependencies your code uses

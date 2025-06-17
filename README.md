@@ -40,6 +40,20 @@ Below are some screenshots of the application in action:
 - pandas
 - requests
 
+## Installation
+
+Install all requirements using:
+
+```sh
+pip install -r requirements.txt
+```
+
+Or install the main dependencies individually:
+
+```sh
+pip install streamlit pandas nse pathlib
+```
+
 ## How to Run
 
 ```sh
