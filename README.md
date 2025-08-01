@@ -28,9 +28,16 @@ Below are some screenshots of the application in action:
 4. Click "Fetch Filings" to download the data under the Downloads category and show filings under the Show category.
 5. Use the collapsible windows to view and download the show category's attachments.
 
+**Note on Credit Ratings:**
+
+- The app always tries to fetch credit ratings from the primary source, which downloads all available ratings for the company, regardless of the date range you select.
+- If the primary source has no ratings, the fallback (secondary) source will only fetch ratings within your selected date range.
+
+
 
 ## Value proposition
-**Batch download:** NSE doesn't have limits on the from and to date ranges(unlike BSE) but it lacks the option to batch download documents or choose multiple categories.
+
+**Batch download:** NSE doesn't have limits on the from and to date ranges (unlike BSE) but it lacks the option to batch download documents or choose multiple categories.
 **Filtering:** Both NSE and BSE have a lot of phantom categories and subcategories making it difficult to filter
 
 ## Requirements

@@ -1,9 +1,20 @@
+
 import streamlit as st
 from datetime import date
 from FilingsDownloader import download_announcements
 import pandas as pd
 from pathlib import Path
 from nse import NSE
+
+# --- Constants ---
+RESIGNATIONS_FOLDER = "resignations"
+UPDATES_FOLDER = "updates"
+PRESS_RELEASES_FOLDER = "press_releases"
+DOWNLOAD_KEY_PREFIX = {
+    'resignations': 'download_resignation_',
+    'updates': 'download_update_',
+    'press_releases': 'download_press_release_'
+}
 
 st.title("KnowledgeLM")
 st.caption("A notebookLM companion for NSE company research")
@@ -30,7 +41,10 @@ st.header("Download Categories")
 col_dl1, col_dl2, col_dl3 = st.columns(3)
 with col_dl1:
     download_transcripts = st.checkbox("Analyst Call Transcripts")
-    download_credit_rating = st.checkbox("Credit Ratings")
+    download_credit_rating = st.checkbox(
+        "Credit Ratings",
+        help="Primary source downloads all credit ratings regardless of date range. If unavailable, fallback source checks only within the selected period."
+    )
 with col_dl2:
     download_investor_presentations = st.checkbox("Investor Presentations")
     download_related_party_txns = st.checkbox("Related Party Transactions")
@@ -80,6 +94,8 @@ if "nse_instance" not in st.session_state:
 # --- Main Action Button ---
 st.markdown("---")
 if st.button("Fetch Filings"):
+
+    # All credit rating logic is handled in FilingsDownloader, which uses primary and secondary sources.
     with st.spinner("Downloading and processing filings..."):
         data, category_counts = download_announcements(
             symbol=symbol,
@@ -106,11 +122,12 @@ if st.button("Fetch Filings"):
             f"Fetched {len(data)} filings. Saved to '{download_folder}'."
         )
         if category_counts:
-            summary = ", ".join(
-                f"{count} {label if count == 1 else label + 's'}"
-                for label, count in category_counts.items()
-                if count > 0
-            )
+            # For credit ratings, use primary/secondary source language
+            summary_parts = []
+            for label, count in category_counts.items():
+                if count > 0:
+                    summary_parts.append(f"{count} {label if count == 1 else label + 's'}")
+            summary = ", ".join(summary_parts)
             if summary:
                 st.session_state.status_msgs.append(f"Downloaded: {summary}")
 
@@ -171,137 +188,73 @@ if st.button("Fetch Filings"):
         else:
             st.session_state.press_releases_df = None
 
-# --- Resignation Table with Download Buttons ---
-if show_resignations and st.session_state.resignation_df is not None and not st.session_state.resignation_df.empty:
-    with st.expander("Resignations", expanded=False):
-        resignation_df = st.session_state.resignation_df
-        nse_instance = st.session_state.nse_instance or NSE(download_folder)
 
-        if st.button("Download All Resignation Attachments"):
-            count = 0
-            for idx, row in resignation_df.iterrows():
-                url = row["Attachment File"]
-                if url and url != "-":
-                    try:
-                        dest_folder = Path(download_folder) / "resignations"
-                        dest_folder.mkdir(parents=True, exist_ok=True)
-                        nse_instance.download_document(url, dest_folder)
-                        count += 1
-                    except Exception as e:
-                        st.session_state.status_msgs.append(f"Error downloading {url}: {e}")
-            st.session_state.status_msgs.append(f"Downloaded {count} resignation attachments.")
-            st.rerun()
-
-        for idx, row in resignation_df.iterrows():
-            col1, col2, col3 = st.columns([2, 5, 2])
-            with col1:
-                st.write(row["Announcement Date"])
-            with col2:
-                st.write(row["Description"])
-            with col3:
-                url = row["Attachment File"]
-                if url and url != "-":
-                    download_key = f"download_resignation_{idx}"
-                    if st.button("Download", key=download_key):
+# --- Helper for Download Tables ---
+def render_download_table(df, show_flag, expander_title, folder_name, key_prefix):
+    if show_flag and df is not None and not df.empty:
+        with st.expander(expander_title, expanded=False):
+            nse_instance = st.session_state.nse_instance or NSE(download_folder)
+            # Download all button
+            if st.button(f"Download All {expander_title} Attachments"):
+                count = 0
+                for idx, row in df.iterrows():
+                    url = row["Attachment File"]
+                    if url and url != "-":
                         try:
-                            dest_folder = Path(download_folder) / "resignations"
+                            dest_folder = Path(download_folder) / folder_name
                             dest_folder.mkdir(parents=True, exist_ok=True)
-                            result = nse_instance.download_document(url, dest_folder)
-                            st.session_state.status_msgs.append(f"Downloaded to {result}")
-                            st.rerun()
+                            nse_instance.download_document(url, dest_folder)
+                            count += 1
                         except Exception as e:
-                            st.session_state.status_msgs.append(f"Error: {e}")
-                            st.rerun()
-                else:
-                    st.write("-")
+                            st.session_state.status_msgs.append(f"Error downloading {url}: {e}")
+                st.session_state.status_msgs.append(f"Downloaded {count} {expander_title.lower()} attachments.")
+                st.rerun()
+            # Per-row download
+            for idx, row in df.iterrows():
+                col1, col2, col3 = st.columns([2, 5, 2])
+                with col1:
+                    st.write(row["Announcement Date"])
+                with col2:
+                    st.write(row["Description"])
+                with col3:
+                    url = row["Attachment File"]
+                    if url and url != "-":
+                        download_key = f"{key_prefix}{idx}"
+                        if st.button("Download", key=download_key):
+                            try:
+                                dest_folder = Path(download_folder) / folder_name
+                                dest_folder.mkdir(parents=True, exist_ok=True)
+                                result = nse_instance.download_document(url, dest_folder)
+                                st.session_state.status_msgs.append(f"Downloaded to {result}")
+                                st.rerun()
+                            except Exception as e:
+                                st.session_state.status_msgs.append(f"Error: {e}")
+                                st.rerun()
+                    else:
+                        st.write("-")
 
-# --- Updates Table ---
-if show_updates and st.session_state.updates_df is not None and not st.session_state.updates_df.empty:
-    with st.expander("Regulation 30 Updates", expanded=False):
-        updates_df = st.session_state.updates_df
-        nse_instance = st.session_state.nse_instance or NSE(download_folder)
-
-        if st.button("Download All Update Attachments"):
-            count = 0
-            for idx, row in updates_df.iterrows():
-                url = row["Attachment File"]
-                if url and url != "-":
-                    try:
-                        dest_folder = Path(download_folder) / "updates"
-                        dest_folder.mkdir(parents=True, exist_ok=True)
-                        nse_instance.download_document(url, dest_folder)
-                        count += 1
-                    except Exception as e:
-                        st.session_state.status_msgs.append(f"Error downloading {url}: {e}")
-            st.session_state.status_msgs.append(f"Downloaded {count} update attachments.")
-            st.rerun()
-
-        for idx, row in updates_df.iterrows():
-            col1, col2, col3 = st.columns([2, 5, 2])
-            with col1:
-                st.write(row["Announcement Date"])
-            with col2:
-                st.write(row["Description"])
-            with col3:
-                url = row["Attachment File"]
-                if url and url != "-":
-                    download_key = f"download_update_{idx}"
-                    if st.button("Download", key=download_key):
-                        try:
-                            dest_folder = Path(download_folder) / "updates"
-                            dest_folder.mkdir(parents=True, exist_ok=True)
-                            result = nse_instance.download_document(url, dest_folder)
-                            st.session_state.status_msgs.append(f"Downloaded to {result}")
-                            st.rerun()
-                        except Exception as e:
-                            st.session_state.status_msgs.append(f"Error: {e}")
-                            st.rerun()
-                else:
-                    st.write("-")
-
-# --- Press Releases Table ---
-if show_press_releases and st.session_state.press_releases_df is not None and not st.session_state.press_releases_df.empty:
-    with st.expander("Press Releases", expanded=False):
-        press_releases_df = st.session_state.press_releases_df
-        nse_instance = st.session_state.nse_instance or NSE(download_folder)
-
-        if st.button("Download All Press Release Attachments"):
-            count = 0
-            for idx, row in press_releases_df.iterrows():
-                url = row["Attachment File"]
-                if url and url != "-":
-                    try:
-                        dest_folder = Path(download_folder) / "press_releases"
-                        dest_folder.mkdir(parents=True, exist_ok=True)
-                        nse_instance.download_document(url, dest_folder)
-                        count += 1
-                    except Exception as e:
-                        st.session_state.status_msgs.append(f"Error downloading {url}: {e}")
-            st.session_state.status_msgs.append(f"Downloaded {count} press release attachments.")
-            st.rerun()
-
-        for idx, row in press_releases_df.iterrows():
-            col1, col2, col3 = st.columns([2, 5, 2])
-            with col1:
-                st.write(row["Announcement Date"])
-            with col2:
-                st.write(row["Description"])
-            with col3:
-                url = row["Attachment File"]
-                if url and url != "-":
-                    download_key = f"download_press_release_{idx}"
-                    if st.button("Download", key=download_key):
-                        try:
-                            dest_folder = Path(download_folder) / "press_releases"
-                            dest_folder.mkdir(parents=True, exist_ok=True)
-                            result = nse_instance.download_document(url, dest_folder)
-                            st.session_state.status_msgs.append(f"Downloaded to {result}")
-                            st.rerun()
-                        except Exception as e:
-                            st.session_state.status_msgs.append(f"Error: {e}")
-                            st.rerun()
-                else:
-                    st.write("-")
+# --- Render Download Tables ---
+render_download_table(
+    st.session_state.resignation_df,
+    show_resignations,
+    "Resignations",
+    RESIGNATIONS_FOLDER,
+    DOWNLOAD_KEY_PREFIX['resignations']
+)
+render_download_table(
+    st.session_state.updates_df,
+    show_updates,
+    "Regulation 30 Updates",
+    UPDATES_FOLDER,
+    DOWNLOAD_KEY_PREFIX['updates']
+)
+render_download_table(
+    st.session_state.press_releases_df,
+    show_press_releases,
+    "Press Releases",
+    PRESS_RELEASES_FOLDER,
+    DOWNLOAD_KEY_PREFIX['press_releases']
+)
 
 # --- Status Window ---
 if st.session_state.status_msgs:
@@ -312,19 +265,4 @@ if st.session_state.status_msgs:
     except Exception:
         for msg in st.session_state.status_msgs:
             st.markdown(msg, unsafe_allow_html=True)
-    except Exception:
-        for msg in st.session_state.status_msgs:
-            st.markdown(msg, unsafe_allow_html=True)
-            if st.button("Download", key=download_key):
-                try:
-                    dest_folder = Path(download_folder) / "press_releases"
-                    dest_folder.mkdir(parents=True, exist_ok=True)
-                    result = nse_instance.download_document(url, dest_folder)
-                    st.session_state.status_msgs.append(f"Downloaded to {result}")
-                    st.rerun()
-                except Exception as e:
-                    st.session_state.status_msgs.append(f"Error: {e}")
-                    st.rerun()
-            else:
-                st.write("-")
 
