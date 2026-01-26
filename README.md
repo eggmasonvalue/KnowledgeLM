@@ -11,13 +11,8 @@ Intended as a companion for NotebookLM and other research tools.
 - Option to download all annual reports or within a date range
 - Select company, date range, and download folder (created in the current directory if it does not exist).
 - User-friendly UI with status window and progress feedback.
-
-## Screenshots
-
-Below are some screenshots of the application in action:
-
-![Features](screenshots/Features.png)
-![Filings View](screenshots/FilingsView.png)
+- **Robust Scraping:** Uses Selenium for high-fidelity PDF conversion of HTML reports.
+- **Secure & Validated:** Implements input sanitization and symbol validation.
 
 
 ## Usage
@@ -37,32 +32,36 @@ Below are some screenshots of the application in action:
 
 ## Value proposition
 
-**Batch download:** NSE doesn't have limits on the from and to date ranges (unlike BSE) but it lacks the option to batch download documents or choose multiple categories.
-**Filtering:** Both NSE and BSE have a lot of phantom categories and subcategories making it difficult to filter
+**One-stop-shop:** NSE doesn't have limits on the from and to date ranges (unlike BSE) but it lacks the option to batch download documents or choose multiple categories.
+**Clean:** Both NSE and BSE have a lot of phantom categories and subcategories making it difficult to filter
 
 ## Requirements
 
-- Python 3.8+
-- streamlit
-- pandas
-- requests
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ## Installation
 
-Install all requirements using:
+Using uv (recommended):
 
 ```sh
-pip install -r requirements.txt
+uv sync
 ```
 
-Or install the main dependencies individually:
+Or using pip:
 
 ```sh
-pip install streamlit pandas nse pathlib
+pip install -e .
 ```
 
 ## How to Run
 
 ```sh
-streamlit run app.py
+uv run streamlit run src/knowledgelm/app.py
+```
+
+Or without uv:
+
+```sh
+streamlit run src/knowledgelm/app.py
 ```

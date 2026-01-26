@@ -1,0 +1,64 @@
+[project]
+name = "knowledgelm"
+version = "2.0.0"
+description = "A NotebookLM companion for batch downloading NSE company announcements"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "streamlit",
+    "pandas",
+    "nse",
+    "requests",
+    "beautifulsoup4",
+    "markdownify",
+    "weasyprint",
+    "selenium>=4.40.0",
+    "webdriver-manager>=4.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+knowledgelm = "knowledgelm.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/knowledgelm"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "D",    # pydocstyle
+]
+ignore = [
+    "D100", # Missing docstring in public module (handled separately)
+    "D104", # Missing docstring in public package
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
