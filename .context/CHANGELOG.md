@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-01-26
+
+### Features
+- **CLI Interface**: New `knowledgelm` CLI with commands:
+  - `download SYMBOL --from DATE --to DATE`: Batch download filings
+  - `list-categories`: Show available filing types
+  - `list-files DIRECTORY --json`: List downloaded files for NotebookLM integration
+- **AI Agent Skill**: Bundled `SKILL.md` at `src/knowledgelm/data/SKILL.md` following [Agent Skills](https://agentskills.io) open standard
+- **NotebookLM Integration**: Skill includes workflow for adding downloads to NotebookLM notebooks via notebooklm-py
+
+### Architecture
+- **CLI-First Design**: All operations accessible via CLI with `--help` discovery and `--json` output for agent parsing
+- **Skill Maintenance**: SKILL.md uses `--help` discovery instead of hardcoded commands (reduces sync burden)
+
+### Dependencies
+- Added `click>=8.1.0` for CLI
+
+### Documentation
+- Updated README with CLI usage, agent skill installation prompt (LLM-agnostic)
+
+
 ## [2.0.0] - 2026-01-26
 
 ### Security

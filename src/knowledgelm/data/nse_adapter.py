@@ -7,15 +7,20 @@ from typing import Any, Dict, List
 
 from nse import NSE
 
-logger = logging.getLogger(__name__)
-
 from knowledgelm.utils.log_utils import redirect_stdout_to_logger
+
+logger = logging.getLogger(__name__)
 
 
 class NSEAdapter:
     """Wrapper around the NSE library to isolate dependencies."""
 
     def __init__(self, download_folder: Path):
+        """Initialize the NSE adapter.
+
+        Args:
+            download_folder: Path where documents will be downloaded.
+        """
         self.download_folder = download_folder
         # Suppress initial print if any
         with redirect_stdout_to_logger(logger):

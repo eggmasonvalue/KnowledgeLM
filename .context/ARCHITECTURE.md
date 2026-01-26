@@ -4,7 +4,8 @@
 
 ```mermaid
 graph TD
-    subgraph UI["UI Layer"]
+    subgraph Entry["Entry Points"]
+        CLI[src/knowledgelm/cli.py<br/>Click CLI]
         APP[src/knowledgelm/app.py<br/>Streamlit UI]
     end
     
@@ -15,6 +16,7 @@ graph TD
     subgraph Data["Data Layer"]
         NSE_ADPT[src/knowledgelm/data/nse_adapter.py]
         SCR_ADPT[src/knowledgelm/data/screener_adapter.py]
+        SKILL[src/knowledgelm/data/SKILL.md<br/>Agent Skill]
     end
     
     subgraph Utils["Utilities"]
@@ -25,14 +27,18 @@ graph TD
     subgraph External["External Sources"]
         NSE_LIB[NSE API<br/>nse library]
         SCR_WEB[screener.in<br/>Credit Ratings]
+        NLMPY[notebooklm-py<br/>Optional Integration]
     end
     
+    CLI --> SRV
     APP --> SRV
     SRV --> NSE_ADPT
     SRV --> SCR_ADPT
     SRV --> F_UTIL
     NSE_ADPT --> NSE_LIB
     SCR_ADPT --> SCR_WEB
+    CLI .-> SKILL
+    SKILL .-> NLMPY
     APP ..-> CONF
     SRV ..-> CONF
 ```
@@ -44,23 +50,30 @@ KnowledgeLM/
 ├── src/
 │   └── knowledgelm/
 │       ├── __init__.py
-│       ├── app.py               # Streamlit UI
-│       ├── config.py            # Configuration
+│       ├── cli.py                # Click CLI (v3.0)
+│       ├── app.py                # Streamlit UI
+│       ├── config.py             # Configuration
 │       ├── core/
-│       │   └── service.py       # Orchestration Logic
+│       │   └── service.py        # Orchestration Logic
 │       ├── data/
-│       │   ├── nse_adapter.py   # NSE Library Wrapper
-│       │   └── screener_adapter.py # Screener Scraper
+│       │   ├── nse_adapter.py    # NSE Library Wrapper
+│       │   ├── screener_adapter.py # Screener Scraper
+│       │   └── SKILL.md          # Agent Skill (v3.0)
 │       └── utils/
-│           └── file_utils.py    # Sanitization & paths
+│           └── file_utils.py     # Sanitization & paths
 ├── tests/
 │   └── test_placeholder.py
 ├── .context/
-├── pyproject.toml               # uv/pip config
+├── pyproject.toml                # uv/pip config
 └── README.md
 ```
 
 ## Component Responsibilities
+
+### cli.py
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`)
+- **JSON Output**: `--json` flag for agent parsing
+- **Help Discovery**: `--help` on all commands for agent self-discovery
 
 ### app.py
 - **UI**: Streamlit forms for symbol, dates, category selection.
@@ -77,6 +90,8 @@ KnowledgeLM/
 - **`screener_adapter.py`**: Handles scraping from Screener.in.
   - Resolves ICRA PDF links directly.
   - Uses Selenium for high-fidelity HTML-to-PDF conversion.
+- **`SKILL.md`**: Agent skill following [Agent Skills](https://agentskills.io) standard.
+  - Instructs AI agents on CLI usage and NotebookLM integration.
 
 ### utils/file_utils.py
 - **`sanitize_folder_name`**: Prevents path traversal security issues.

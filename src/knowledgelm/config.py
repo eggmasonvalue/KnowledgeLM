@@ -1,6 +1,5 @@
 """Configuration settings for KnowledgeLM."""
 
-
 # --- Folder Names ---
 RESIGNATIONS_FOLDER = "resignations"
 UPDATES_FOLDER = "updates"

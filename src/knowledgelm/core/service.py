@@ -96,10 +96,7 @@ class KnowledgeService:
                 category_counts[label] = count
                 continue
 
-            # Standard Categories
-            # Note: We need the filters. In the original code, they were in the 'DOWNLOAD_CATEGORIES' dict.
-            # We need to reconstruct that logic or import it.
-            # For simplicity in this refactor, I will implement a filter helper.
+            # Standard Categories - apply filter and download matching items
 
             cat_folder = download_dir / cat_key
             cat_folder.mkdir(parents=True, exist_ok=True)

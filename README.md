@@ -1,39 +1,58 @@
 # KnowledgeLM
 
-A web app to batch download NSE company announcements by category.  
+A CLI and web app to batch download NSE company announcements by category.  
 Intended as a companion for NotebookLM and other research tools.
 
 ## Features
 
-- Download announcements and attachments by category (Transcripts, Investor Presentations, Credit Rating, Related Party Transactions, Annual Reports).
-- View and download attachments for Resignations, Regulation 30 Updates (experimental), and Press Releases in collapsible windows.
-- "Download all" and per-filing download options for each window.
-- Option to download all annual reports or within a date range
-- Select company, date range, and download folder (created in the current directory if it does not exist).
-- User-friendly UI with status window and progress feedback.
-- **Robust Scraping:** Uses Selenium for high-fidelity PDF conversion of HTML reports.
-- **Secure & Validated:** Implements input sanitization and symbol validation.
+- **CLI**: Batch download filings with `knowledgelm download SYMBOL --from DATE --to DATE`
+- **Web UI**: Streamlit app for interactive downloads
+- Download announcements by category: Transcripts, Investor Presentations, Credit Ratings, Related Party Transactions, Annual Reports
+- **AI Agent Skill**: Works with Claude Code, Gemini CLI, Codex, and other LLM agents
+- **NotebookLM Integration**: Easily add downloaded files as sources to NotebookLM notebooks
 
+## Quick Start (CLI)
 
-## Usage
+```bash
+# Install
+pip install knowledgelm
 
-1. Enter the company symbol, start date, and end date.
-2. Choose the download folder (it will be created in the current directory if it does not exist).
-3. Select download categories and/or which filings to display.
-4. Click "Fetch Filings" to download the data under the Downloads category and show filings under the Show category.
-5. Use the collapsible windows to view and download the show category's attachments.
+# Download all categories for a company
+knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
 
-**Note on Credit Ratings:**
+# Download specific categories
+knowledgelm download INFY --from 2020-01-01 --to 2025-01-26 --categories transcripts,credit_rating
 
-- The app always tries to fetch credit ratings from the primary source, which downloads all available ratings for the company, regardless of the date range you select.
-- If the primary source has no ratings, the fallback (secondary) source will only fetch ratings within your selected date range.
+# List available categories
+knowledgelm list-categories
 
+# List downloaded files (for NotebookLM integration)
+knowledgelm list-files ./HDFCBANK_knowledgeLM --json
+```
 
+## AI Agent Skill Installation
 
-## Value proposition
+KnowledgeLM includes an agent skill for use with Claude Code, Gemini CLI, Codex, or any LLM that supports the [Agent Skills](https://agentskills.io) standard.
 
-**One-stop-shop:** NSE doesn't have limits on the from and to date ranges (unlike BSE) but it lacks the option to batch download documents or choose multiple categories.
-**Clean:** Both NSE and BSE have a lot of phantom categories and subcategories making it difficult to filter
+**To install the skill, give this prompt to your AI agent:**
+
+> Install the knowledgelm-nse skill by copying `src/knowledgelm/data/SKILL.md` from the knowledgelm package to your skills directory. The skill enables batch downloading of NSE India company filings and integration with NotebookLM.
+
+The agent will locate the SKILL.md file and install it to the appropriate location for your environment.
+
+## Web UI Usage
+
+1. Run the Streamlit app:
+   ```bash
+   streamlit run src/knowledgelm/app.py
+   ```
+
+2. Enter the company symbol, start date, and end date.
+3. Choose the download folder.
+4. Select download categories and/or which filings to display.
+5. Click "Fetch Filings" to download.
+
+**Note on Credit Ratings:** The app tries the primary source first (all available ratings). If unavailable, the fallback only fetches ratings within your date range.
 
 ## Requirements
 
@@ -44,24 +63,26 @@ Intended as a companion for NotebookLM and other research tools.
 
 Using uv (recommended):
 
-```sh
+```bash
 uv sync
 ```
 
 Or using pip:
 
-```sh
+```bash
 pip install -e .
 ```
 
-## How to Run
+## Development
 
-```sh
-uv run streamlit run src/knowledgelm/app.py
+```bash
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov
+
+# Format code
+ruff format src/ tests/
 ```
 
-Or without uv:
-
-```sh
-streamlit run src/knowledgelm/app.py
-```

@@ -68,6 +68,7 @@ col_dl1, col_dl2, col_dl3 = st.columns(3)
 
 # Helper to access config keys
 def get_config_key(cat):
+    """Get the enabled_arg key for a category from config."""
     return DOWNLOAD_CATEGORIES_CONFIG[cat]["enabled_arg"]
 
 
@@ -119,17 +120,8 @@ if st.button("Fetch Filings"):
             options = {
                 "download_transcripts": download_transcripts,
                 "download_investor_presentations": download_investor_presentations,
-                "download_press_releases": False,  # Handled separately/implicitly in logic if needed?
-                # Original code had this False in args but True in UI logic?
-                # Let's align with user intent: if they want to download PRs bulk, add option.
-                # But here 'options' controls the bulk download loop.
-                # Original App passed 'download_press_releases=False' to download_announcements
-                # but had a loop to filter PRs for the DataFrame view.
-                # We'll stick to the original logic: PRs are mostly for the view unless explicitly bulk downloaded?
-                # Wait, the config has "press_releases" enabled_arg.
-                # Let's assume we want to download them if the user wanted.
-                # But the original code hardcoded `download_press_releases=False`.
-                # I will assume we DO NOT want bulk download for PRs yet unless changed.
+                # PRs displayed in view, not bulk downloaded (original behavior)
+                "download_press_releases": False,
                 "download_credit_rating": download_credit_rating,
                 "download_related_party_txns": download_related_party_txns,
                 "download_annual_reports": download_annual_reports,
@@ -148,8 +140,8 @@ if st.button("Fetch Filings"):
             st.session_state.category_counts = category_counts
 
             # Re-create DataFrames for the UI Logic
-            # Filter Logic duplication: ideally this moves to Service too and returns dataframes or objects
-            # For now, we keep the DF construction here to minimize UI refactor shock
+            # Filter logic duplication: ideally moves to Service and returns DFs
+            # For now, we keep the DF construction here to minimize UI refactor
 
             # Resignations
             resignation_records = [
@@ -235,13 +227,7 @@ def render_download_table(
     """Render an expandable table with download buttons for filings."""
     if show_flag and df is not None and not df.empty:
         with st.expander(expander_title, expanded=False):
-            # We need a downloader instance for these manual buttons
-            # Ideally, we call 'service.download_file'
-            # But the service requires init with root path.
-            # We can re-init service or use a static helper.
-            # For simplicity let's use the lightweight NSE lib here just for the UI interaction (legacy compat)
-            # OR better: use our new sanitization utils to get path and direct download?
-            # Let's use NSE library directly for consistency with old behavior BUT with safe paths.
+            # Use NSE lib directly for UI downloads (legacy compat, safe paths)
 
             try:
                 root_path = get_download_path(".", download_root_name)

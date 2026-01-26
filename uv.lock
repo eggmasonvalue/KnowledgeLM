@@ -515,10 +515,11 @@ wheels = [
 
 [[package]]
 name = "knowledgelm"
-version = "2.0.0"
+version = "3.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
+    { name = "click" },
     { name = "markdownify" },
     { name = "nse" },
     { name = "pandas" },
@@ -545,6 +546,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4" },
+    { name = "click", specifier = ">=8.1.0" },
     { name = "markdownify" },
     { name = "nse" },
     { name = "pandas" },

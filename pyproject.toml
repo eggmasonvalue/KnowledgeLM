@@ -1,6 +1,6 @@
 [project]
 name = "knowledgelm"
-version = "2.0.0"
+version = "3.0.0"
 description = "A NotebookLM companion for batch downloading NSE company announcements"
 readme = "README.md"
 license = { text = "MIT" }
@@ -15,6 +15,7 @@ dependencies = [
     "weasyprint",
     "selenium>=4.40.0",
     "webdriver-manager>=4.0.2",
+    "click>=8.1.0",
 ]
 
 [project.optional-dependencies]
@@ -25,7 +26,7 @@ dev = [
 ]
 
 [project.scripts]
-knowledgelm = "knowledgelm.app:main"
+knowledgelm = "knowledgelm.cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -14,6 +14,13 @@ import requests
 import urllib3
 from bs4 import BeautifulSoup
 
+from knowledgelm.config import (
+    CREDIT_RATING_FOLDER,
+    SCREENER_BASE_URL,
+    SCREENER_DOCS_SELECTOR,
+    SCREENER_TIMEOUT,
+)
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Conditional Selenium import for HTML-to-PDF conversion
@@ -26,13 +33,6 @@ try:
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
-
-from knowledgelm.config import (
-    CREDIT_RATING_FOLDER,
-    SCREENER_BASE_URL,
-    SCREENER_DOCS_SELECTOR,
-    SCREENER_TIMEOUT,
-)
 
 logger = logging.getLogger(__name__)
 
