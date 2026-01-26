@@ -9,6 +9,19 @@ Batch download filings by category with configurable filters:
 - Related Party Transactions
 - Annual Reports (date range or all)
 
+## [done] CLI Interface (v3.0)
+
+Full programmatic access via `knowledgelm` command:
+- **Download**: Batch download with automated folder creation.
+- **Discovery**: `--help` on all levels for self-documenting interface.
+- **JSON Output**: `--json` flag for machine readability and AI agent parsing.
+
+## [done] Agent-First Design (v3.0)
+
+- **Standardized Skill**: `SKILL.md` compliant with [Agent Skills](https://agentskills.io) standard.
+- **Automation workflows**: Optimized for LLM tools (Claude Code, Gemini CLI, etc.).
+- **NotebookLM Synergy**: Purpose-built `list-files --json` command to facilitate source injection.
+
 ## [done] Credit Rating Dual-Source
     
 1. Primary: Scrape screener.in (all-time)
