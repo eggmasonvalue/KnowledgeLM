@@ -16,7 +16,10 @@ graph TD
     subgraph Data["Data Layer"]
         NSE_ADPT[src/knowledgelm/data/nse_adapter.py]
         SCR_ADPT[src/knowledgelm/data/screener_adapter.py]
-        SKILL[src/knowledgelm/data/SKILL.md<br/>Agent Skill]
+    end
+    
+    subgraph Agent["Agent Resources"]
+        SKILL[.agent/skills/knowledgelm-nse/SKILL.md<br/>Agent Skill]
     end
     
     subgraph Utils["Utilities"]
@@ -57,14 +60,17 @@ KnowledgeLM/
 │       │   └── service.py        # Orchestration Logic
 │       ├── data/
 │       │   ├── nse_adapter.py    # NSE Library Wrapper
-│       │   ├── screener_adapter.py # Screener Scraper
-│       │   └── SKILL.md          # Agent Skill (v3.0)
+│       │   └── screener_adapter.py # Screener Scraper
 │       └── utils/
 │           └── file_utils.py     # Sanitization & paths
 ├── tests/
 │   └── test_placeholder.py
+├── .agent/
+│   └── skills/
+│       └── knowledgelm-nse/
+│           └── SKILL.md          # Agent Skill (v3.0)
 ├── .context/
-├── pyproject.toml                # uv/pip config
+├── pyproject.toml                # uv config
 └── README.md
 ```
 
@@ -90,8 +96,11 @@ KnowledgeLM/
 - **`screener_adapter.py`**: Handles scraping from Screener.in.
   - Resolves ICRA PDF links directly.
   - Uses Selenium for high-fidelity HTML-to-PDF conversion.
+
+### .agent/skills/knowledgelm-nse/
 - **`SKILL.md`**: Agent skill following [Agent Skills](https://agentskills.io) standard.
   - Instructs AI agents on CLI usage and NotebookLM integration.
+  - Self-upgradeable via GitHub raw URL.
 
 ### utils/file_utils.py
 - **`sanitize_folder_name`**: Prevents path traversal security issues.

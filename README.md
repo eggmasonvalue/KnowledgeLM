@@ -15,7 +15,7 @@ Intended as a companion for NotebookLM and other research tools.
 
 ```bash
 # Install
-pip install knowledgelm
+uv tool install knowledgelm
 
 # Download all categories for a company
 knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
@@ -36,7 +36,7 @@ KnowledgeLM includes an agent skill for use with Claude Code, Gemini CLI, Codex,
 
 **To install the skill, give this prompt to your AI agent:**
 
-> Install the knowledgelm-nse skill by copying `src/knowledgelm/data/SKILL.md` from the knowledgelm package to your skills directory. The skill enables batch downloading of NSE India company filings and integration with NotebookLM.
+> Install the knowledgelm-nse skill by copying `.agent/skills/knowledgelm-nse/SKILL.md` from the knowledgelm repository to your skills directory. The skill enables batch downloading of NSE India company filings and integration with NotebookLM.
 
 The agent will locate the SKILL.md file and install it to the appropriate location for your environment.
 
@@ -57,20 +57,12 @@ The agent will locate the SKILL.md file and install it to the appropriate locati
 ## Requirements
 
 - Python 3.12+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- [uv](https://docs.astral.sh/uv/) (recommended)
 
-## Installation
-
-Using uv (recommended):
+Using uv:
 
 ```bash
 uv sync
-```
-
-Or using pip:
-
-```bash
-pip install -e .
 ```
 
 ## Development

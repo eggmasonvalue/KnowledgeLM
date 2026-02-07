@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-02-08
+
+### Breaking Changes
+- **Skill Location**: Moved agent skill from `src/knowledgelm/data/SKILL.md` to `.agent/skills/knowledgelm-nse/SKILL.md` following skill-creator best practices for directory-based structure with bundled resources
+
+### Features
+- **Self-Upgradeable Skill**: Skill can now self-upgrade by downloading latest version from GitHub raw URL
+- **Bundled Resources**: Added `references/` directory with NotebookLM audio overview prompt template for fundamental analysis
+- **Enhanced NotebookLM Integration**: 
+  - Comprehensive version management for both notebooklm-py package and skill
+  - Uses `uv tool upgrade` for package updates
+  - Always runs `notebooklm skill install` to ensure skill is current
+  - Handles browser extras conditionally for first-time authentication
+  - Vendor-agnostic approach for different AI agent skills directories
+- **Package Upgrade**: Added `uv tool upgrade knowledgelm` to Installation section
+
+### Documentation
+- **Skill Improvements**: Streamlined skill to be principle-based rather than task-like, emphasizing `--help` discovery over prescriptive commands
+- **Architecture Updates**: Updated `.context/ARCHITECTURE.md` to reflect new `.agent/` directory structure with separate "Agent Resources" subgraph in mermaid diagram
+- **Changelog Updates**: Updated skill path references throughout `.context/` artifacts
+
+### Cleanup
+- Removed legacy pip artifacts (root `__pycache__`, committed `.coverage`, and `nse_cookies_requests.pkl`)
+- Updated documentation and agent skill to prefer `uv` over `pip`
+
 ## [3.0.0] - 2026-01-26
 
 ### Features
@@ -9,7 +34,7 @@
   - `download SYMBOL --from DATE --to DATE`: Batch download filings
   - `list-categories`: Show available filing types
   - `list-files DIRECTORY --json`: List downloaded files for NotebookLM integration
-- **AI Agent Skill**: Bundled `SKILL.md` at `src/knowledgelm/data/SKILL.md` following [Agent Skills](https://agentskills.io) open standard
+- **AI Agent Skill**: Bundled `SKILL.md` at `.agent/skills/knowledgelm-nse/SKILL.md` following [Agent Skills](https://agentskills.io) open standard
 - **NotebookLM Integration**: Skill includes workflow for adding downloads to NotebookLM notebooks via notebooklm-py
 
 ### Architecture

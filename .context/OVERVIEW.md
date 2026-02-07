@@ -39,7 +39,7 @@ A CLI and Streamlit web app for batch downloading NSE company announcements by c
 
 ```bash
 # Install
-uv sync  # or pip install .
+uv sync
 
 # CLI
 knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
