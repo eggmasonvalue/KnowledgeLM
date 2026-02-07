@@ -18,6 +18,27 @@ dependencies = [
     "click>=8.1.0",
 ]
 
+authors = [
+    { name = "eggmasonvalue" }
+]
+
+keywords = ["nse", "india", "stocks", "notebooklm", "fundamental-analysis", "investor-tools"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+
+[project.urls]
+Homepage = "https://github.com/eggmasonvalue/KnowledgeLM"
+Repository = "https://github.com/eggmasonvalue/KnowledgeLM"
+Issues = "https://github.com/eggmasonvalue/KnowledgeLM/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest",
