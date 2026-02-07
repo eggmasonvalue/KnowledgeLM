@@ -24,14 +24,19 @@ To upgrade: `uv tool upgrade knowledgelm`
 
 To upgrade this skill to the latest version:
 
-1. Download the latest skill from GitHub:
+1. Download the latest skill directory from GitHub:
    ```
-   https://raw.githubusercontent.com/eggmasonvalue/KnowledgeLM/main/.agent/skills/knowledgelm-nse/SKILL.md
+   https://github.com/eggmasonvalue/KnowledgeLM/tree/main/.agent/skills/knowledgelm-nse
    ```
 
-2. Replace the existing `SKILL.md` in your skills directory with the downloaded version.
+2. Download all files in the `knowledgelm-nse/` directory:
+   - `SKILL.md`
+   - `references/notebooklm_audio_prompt.md`
+   - (Any future bundled resources)
 
-**Note:** The skill file location in your skills directory depends on your AI agent vendor.
+3. Replace the existing skill directory in your skills directory with the downloaded version.
+
+**Note:** The skill directory location depends on your AI agent vendor (e.g., `~/.claude/skills/knowledgelm-nse/`).
 
 ## Command Discovery
 

@@ -36,9 +36,9 @@ KnowledgeLM includes an agent skill for use with Claude Code, Gemini CLI, Codex,
 
 **To install the skill, give this prompt to your AI agent:**
 
-> Install the knowledgelm-nse skill by copying `.agent/skills/knowledgelm-nse/SKILL.md` from the knowledgelm repository to your skills directory. The skill enables batch downloading of NSE India company filings and integration with NotebookLM.
+> Install the knowledgelm-nse skill by copying the `.agent/skills/knowledgelm-nse/` directory (including all bundled resources) from the knowledgelm repository to your skills directory. The skill enables batch downloading of NSE India company filings and integration with NotebookLM.
 
-The agent will locate the SKILL.md file and install it to the appropriate location for your environment.
+The agent will locate the skill directory and install it to the appropriate location for your environment.
 
 ## Web UI Usage
 
