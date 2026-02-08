@@ -38,3 +38,6 @@ Thumbs.db
 # Misc
 *.bak
 *.tmp
+
+# Developer-only references
+PUBLISHING.md
