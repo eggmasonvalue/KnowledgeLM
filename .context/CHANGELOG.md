@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Documentation
+- **Agent-First README**: Pivoted `README.md` to prioritize AI Agent setup via a single copy-paste prompt, reflecting the core project philosophy.
+- **Skill Installation UX**: Refined the AI Agent prompt to explicitly instruct agents to locate their workspace skills directory for installation from the remote repository.
+
 ## [4.0.0] - 2026-02-08
 
 ### Breaking Changes
