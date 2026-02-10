@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnowledgeLM | Industrial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Palette: Industrial Matte */
+            --bg-base: #F4F4F4;
+            /* Concrete White */
+            --bg-panel: #FFFFFF;
+            --ink: #111111;
+            --ink-light: #555555;
+            --accent: #FF3300;
+            /* International Orange */
+            --grid-line: #DDDDDD;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--ink);
+            font-family: 'Space Grotesk', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            /* Architectural Grid Background */
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Abstract Motion - Architectural Lines Passing By */
+        .motion-layer {
+            position: absolute;
+            top: 20%;
+            bottom: 20%;
+            left: 0;
+            width: 200%;
+            background: repeating-linear-gradient(90deg,
+                    transparent,
+                    transparent 200px,
+                    rgba(0, 0, 0, 0.05) 200px,
+                    rgba(0, 0, 0, 0.05) 201px,
+                    /* Thin line */
+                    transparent 201px,
+                    transparent 400px,
+                    rgba(0, 0, 0, 0.1) 400px,
+                    rgba(0, 0, 0, 0.1) 402px
+                    /* Thicker line */
+                );
+            animation: pan-lines 20s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes pan-lines {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        /* The Main "Unit" */
+        .unit-container {
+            position: relative;
+            z-index: 10;
+            background: var(--bg-panel);
+            width: 800px;
+            padding: 4rem;
+            border: 1px solid #CCCCCC;
+            /* Hard Shadow, no blur */
+            box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            /* Changed to flex-end to align baselines */
+            margin-bottom: 3rem;
+            border-bottom: 2px solid var(--ink);
+            padding-bottom: 1rem;
+        }
+
+        .brand-mark {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 600;
+            background: var(--ink);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        /* Status LED */
+        .status-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--ink-light);
+        }
+
+        .led {
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 1;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            line-height: 1;
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 span {
+            color: var(--accent);
+        }
+
+        p.desc {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--ink-light);
+            max-width: 450px;
+            line-height: 1.5;
+            margin-bottom: 3rem;
+        }
+
+        /* The Command Field - "Tape Deck" style */
+        .cmd-deck {
+            background: #F0F0F0;
+            border: 1px solid #CCC;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .cmd-deck:hover {
+            background: #E8E8E8;
+        }
+
+        .cmd-deck:active {
+            background: #E0E0E0;
+            transform: translateY(1px);
+        }
+
+        .cmd-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.95rem;
+            color: var(--ink);
+        }
+
+        .cmd-icon {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+
+        /* Footer Grid */
+        .data-grid {
+            margin-top: 3rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid #EEE;
+            padding-top: 1.5rem;
+        }
+
+        .data-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .d-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--ink-light);
+            letter-spacing: 0.05em;
+        }
+
+        .d-val {
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: 'IBM Plex Mono';
+        }
+
+        /* Mobile */
+        @media (max-width: 850px) {
+            .unit-container {
+                width: 90%;
+                padding: 2rem;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .data-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .motion-layer {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="motion-layer"></div>
+
+    <div class="unit-container">
+
+        <div class="header-row">
+            <div class="brand-mark">KNOWLEDGELM</div>
+            <div class="status-display">
+                <span>RANDOM WALKING</span>
+                <div class="led"></div>
+            </div>
+        </div>
+
+        <h1>
+            Fundamentals.<br>
+            <span>Frictionless</span>
+        </h1>
+
+        <p class="desc">
+            Talk to Indian publicly listed company filings. Just say the words.
+        </p>
+
+        <div class="cmd-deck" onclick="copyCmd()">
+            <span class="cmd-text">npx skills add eggmasonvalue/knowledgelm-nse</span>
+            <span class="cmd-icon">↓</span>
+        </div>
+
+        <div class="data-grid">
+            <div class="data-item">
+                <span class="d-label">Source</span>
+                <span class="d-val">NSE + CRAs</span>
+            </div>
+            <div class="data-item">
+                <span class="d-label">Scope</span>
+                <span class="d-val">NSE mainboard</span>
+            </div>
+            <div class="data-item">
+                <span class="d-label">Destination</span>
+                <span class="d-val">NotebookLM</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- The Demo / Log Section -->
+    <div class="demo-container">
+        <div class="user-prompt">
+            <span class="prompt-marker">USER:</span>
+            <span class="prompt-text">/knowledgelm-nse set up a research notebook for NRB Bearings since COVID
+                onset</span>
+        </div>
+
+        <div class="agent-response">
+            <div class="resp-header">
+                KNOWLEDGELM <span style="opacity:0.3">//</span> EXECUTION LOG
+            </div>
+            <div class="resp-body">
+                <p class="success-msg">Successfully set up research notebook for <span class="highlight">NRB
+                        Bearings</span>.</p>
+
+                <div class="log-section">
+                    <span class="log-label">01. DATA INGESTION</span>
+                    <p>49 filings retrieved starting Jan 30, 2020 (post-COVID onset).</p>
+                    <p class="meta" style="margin-bottom: 0.8rem;">Saved to: <span
+                            class="path">./NRBBEARING_filings</span>
+                    </p>
+                    <ul class="file-list">
+                        <li>Analyst Call Transcripts</li>
+                        <li>Investor Presentations</li>
+                        <li>Credit Ratings (CRISIL/ICRA)</li>
+                        <li>Annual Reports</li>
+                    </ul>
+                </div>
+
+                <div class="log-section">
+                    <span class="log-label">02. NOTEBOOK GENERATION</span>
+                    <p>Created Notebook: <span class="highlight">"NRB Bearings Research - Since COVID"</span></p>
+                    <p class="meta">ID: 233e341c-6720-496e-addc-41a08033111a</p>
+                </div>
+
+                <div class="log-section">
+                    <span class="log-label">03. INTEGRATION</span>
+                    <p>All source PDFs injected into the notebook</p>
+                </div>
+
+                <div class="next-steps">
+                    <p style="margin-bottom: 0.5rem;">> READY for query. Try: <span class="code">/notebooklm ask
+                            "Summarize margin trends"</span></p>
+                    <p>> My skill includes the ability to generate an AUDIO OVERVIEW(Deep Dive) from:<span
+                            class="path">references/audio_prompt.md</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* CSS for the new Demo Section */
+        .demo-container {
+            width: 800px;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .user-prompt {
+            background: #FFFFFF;
+            border: 1px solid #CCC;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.9rem;
+            display: flex;
+            gap: 1rem;
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .prompt-marker {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .prompt-text {
+            color: var(--ink);
+        }
+
+        .agent-response {
+            background: #FFFFFF;
+            border: 1px solid #CCC;
+            box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .resp-header {
+            background: var(--ink);
+            color: #FFF;
+            padding: 0.8rem 1.5rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+
+        .resp-body {
+            padding: 2rem 2.5rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--ink-light);
+        }
+
+        .success-msg {
+            color: var(--ink);
+            margin-bottom: 2rem;
+        }
+
+        .highlight {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .log-section {
+            margin-bottom: 1.5rem;
+            border-left: 2px solid #EEE;
+            padding-left: 1rem;
+        }
+
+        .log-label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 0.3rem;
+        }
+
+        .path {
+            color: var(--accent);
+            opacity: 0.8;
+        }
+
+        .file-list {
+            list-style: none;
+            margin-top: 0.5rem;
+            padding-left: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .file-list li::before {
+            content: "+ ";
+            opacity: 0.5;
+        }
+
+        .meta {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            margin-top: 0.2rem;
+        }
+
+        .next-steps {
+            margin-top: 2rem;
+            background: #F4F4F4;
+            padding: 1rem;
+            border-left: 3px solid var(--accent);
+            color: var(--ink);
+            font-size: 0.8rem;
+        }
+
+        .code {
+            background: #E0E0E0;
+            padding: 0.1rem 0.3rem;
+            border-radius: 2px;
+            color: var(--ink);
+        }
+
+        /* Tweaks for body flow */
+        body {
+            height: auto;
+            min-height: 100vh;
+            flex-direction: column;
+            padding: 4rem 0;
+            overflow-y: auto;
+        }
+    </style>
+
+    <script>
+        function copyCmd() {
+            navigator.clipboard.writeText('npx skills add eggmasonvalue/knowledgelm-nse');
+            const icon = document.querySelector('.cmd-icon');
+            const original = icon.innerText;
+            icon.innerText = "✓";
+            setTimeout(() => { icon.innerText = original; }, 1000);
+        }
+    </script>
+</body>
+
+</html>
