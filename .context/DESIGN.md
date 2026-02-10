@@ -68,8 +68,9 @@ Separation of concerns:
 ---
 
 ## [idea] Future Enhancements
-
-- BSE support
-- Export to structured formats (CSV, Excel)
-- Configurable alert filters
-- Progress bars for bulk downloads
+- github web page with instructions to get started
+- add a CLI functionality that would take the VP URL and download the entire paginated conversation into one single .pdf. text box input for the same in the web UI and agent skill instructions in skill.md file to incorporate the same. or we can skip providing the VP download feature to web and CLI and make it an AI script. that would be better. provide two options - one to raw download, one to format it better and return it as a .json or a lighter weight format for LLMs to process. 
+- write tests that check for breaking changes in external dependencies - nse scraper, screener scraper, icra, etc. as github actions daily to validate reports. 
+- make .toml tighter with respect to external dependencies like nse since they might introduce breaking changes at any time
+- naming needs to be better for the docs. it's still terribly random
+- TJI finance as knowledge base source - ask AI to figure out and visit the tijori finance website for the stock, go to the knowledge base, get all the links, send the VP link to the CLI and add the rest of the links directly.
