@@ -1,0 +1,3 @@
+[submodule ".agent/skills/knowledgelm-nse"]
+	path = .agent/skills/knowledgelm-nse
+	url = https://github.com/eggmasonvalue/knowledgelm-nse.git
