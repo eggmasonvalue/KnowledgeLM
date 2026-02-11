@@ -57,7 +57,7 @@ with col3:
 # --- Download Folder ---
 folder_name_input = st.text_input(
     "Artifacts Folder Name",
-    value=f"{symbol}_artifacts",
+    value=f"{symbol}_filings",
     help="Name of the folder to create. Do NOT include paths (e.g., 'C:\\'). Valid chars only.",
 )
 

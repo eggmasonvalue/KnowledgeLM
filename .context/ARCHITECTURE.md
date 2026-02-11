@@ -11,6 +11,7 @@ graph TD
     
     subgraph Logic["Core Logic"]
         SRV[src/knowledgelm/core/service.py]
+        FORUM[src/knowledgelm/core/forum.py<br/>ValuePickr Export]
     end
     
     subgraph Data["Data Layer"]
@@ -18,8 +19,8 @@ graph TD
         SCR_ADPT[src/knowledgelm/data/screener_adapter.py]
     end
     
-    subgraph Agent["Agent Resources"]
-        SKILL[.agent/skills/knowledgelm-nse/SKILL.md<br/>Agent Skill]
+    subgraph Agent["Agent Resources (External Repos)"]
+        SKILL[.agent/skills/knowledgelm-nse/SKILL.md<br/>Submodule: eggmasonvalue/knowledgelm-nse]
     end
     
     subgraph Utils["Utilities"]
@@ -34,6 +35,7 @@ graph TD
     end
     
     CLI --> SRV
+    CLI --> FORUM
     APP --> SRV
     SRV --> NSE_ADPT
     SRV --> SCR_ADPT
@@ -67,7 +69,7 @@ KnowledgeLM/
 │   └── test_placeholder.py
 ├── .agent/
 │   └── skills/
-│       └── knowledgelm-nse/
+│       └── knowledgelm-nse/      # Git Submodule (External Repo)
 │           └── SKILL.md          # Agent Skill (v3.0)
 ├── .context/
 ├── pyproject.toml                # uv config
@@ -145,7 +147,7 @@ sequenceDiagram
 ## Output Structure
 
 ```
-{folder_name}/
+{symbol}_filings/
 ├── transcripts/
 ├── investor_presentations/
 ├── credit_rating/
@@ -154,4 +156,9 @@ sequenceDiagram
 ├── resignations/      (Optional: Logical grouping in UI, physical folder relies on user download)
 ├── updates/           (Optional: Logical grouping in UI)
 └── press_releases/    (Optional: Logical grouping in UI)
+
+{symbol}_valuepickr/
+├── {slug}_valuepickr_forum.pdf
+└── {slug}_ValuePickr_references.md
+
 ```

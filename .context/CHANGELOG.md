@@ -2,9 +2,43 @@
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-02-11
+
+### Features
+- **Standardized Download Folders**:
+  - Renamed NSE filings download folder from `_knowledgeLM` to `_filings` (e.g., `HDFCBANK_filings`).
+  - Updated Streamlit default folder to `_filings`.
+  - **ValuePickr Dedicated Folders**: Forum downloads now save to a dedicated `SYMBOL_valuepickr` folder (or `slug_valuepickr` if symbol not provided), keeping PDF and references grouped together.
+  - Added `--symbol` (`-s`) option to `forum` command for explicit folder naming.
+
+### Distribution & Scaling
+- **Skill Repository Integration**: Updated `knowledgelm-nse` agent skill submodule to the latest version.
+- **Submodule Integration**: Converted the local skill directory into a Git submodule, allowing for unified updates while maintaining standalone distribution.
+- **One-Click Installation**: Replaced manual path-based installation instructions with the standardized `npx skills add` command for better user experience and telemetry support.
+
+### UI/UX & Copy
+- **Industrial Aesthetic Polish**: Replaced "International Orange" branding with a sophisticated "Emerald Signal Green" to better align with financial research and "growth" themes.
+- **Punchier Copy**: Refined the primary landing page copy to bridge the gap between technical utility and agentic capability ("Command the full depth...").
+- **Consistent Styling**: Ensured all accent elements (LEDs, icons, highlights, borders) are synchronized with the new green theme.
+
 ### Documentation
-- **Agent-First README**: Pivoted `README.md` to prioritize AI Agent setup via a single copy-paste prompt, reflecting the core project philosophy.
-- **Skill Installation UX**: Refined the AI Agent prompt to explicitly instruct agents to locate their workspace skills directory for installation from the remote repository.
+- **Agentic Copy Refinement**: Pivoted the landing page description to explicitly highlight the "Skill" terminology and the core value proposition of feeding Indian market intelligence to NotebookLM.
+- **Setup UX**: Integrated the "Setup? Speak it into existence" tagline to emphasize frictionless agentic installation.
+
+
+## [4.1.0] - 2026-02-11
+
+### Features
+- **ValuePickr Forum Export**: New `forum` command to export entire threads from ValuePickr (Discourse) to clean, multimodal-ready PDFs
+  - Uses direct JSON API for reliable fetching (handles pagination)
+  - Headless Chrome (Selenium) for high-fidelity PDF generation with embedded images
+  - Optimized for NotebookLM: Strips noise (usernames, avatars) to maximize context density
+  - **Reference Extraction**: Uses Discourse Message metadata (JSON) to extract "Popular Links" with click counts.
+    - *HTML parsing logic retained as disabled fallback for future-proofing.*
+  - **Typography**: Enhanced readability with Georgia/Serif fonts and relaxed line height
+  - **Silent Progress Streams**: Redirected all background logs and progress messages to `knowledgelm.log` (overwritten on every run).
+    - **Clean Stdout/Stderr**: Terminal streams are now reserved exclusively for final results and actionable exceptions, preventing "context pollution" for AI agents.
+    - **High-Signal Error Handling**: Maintained explicit exception reporting on the terminal to ensure failure states are correctly interpreted by agents.
 
 ## [4.0.0] - 2026-02-08
 

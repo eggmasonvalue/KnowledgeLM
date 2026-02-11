@@ -6,6 +6,7 @@ import os
 os.environ["WDM_LOG"] = "0"
 import base64
 import logging
+import subprocess
 import time
 from pathlib import Path
 from typing import Optional
@@ -68,9 +69,12 @@ def _download_with_selenium(url: str, output_path: Path) -> bool:
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--log-level=3")  # Fatal only, silences DevTools listening...
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
         # Ensure we are not blocking downloads (though we are printing)
 
-        service = Service(ChromeDriverManager().install())
+        service = Service(ChromeDriverManager().install(), log_output=subprocess.DEVNULL)
+        if os.name == "nt":
+            service.creation_flags = subprocess.CREATE_NO_WINDOW
         driver = webdriver.Chrome(service=service, options=options)
 
         logger.debug(f"Rendering {url} via Selenium...")

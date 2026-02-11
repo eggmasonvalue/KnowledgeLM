@@ -1,6 +1,6 @@
 # KnowledgeLM 🧠
 
-[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.2.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Built with uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
 
@@ -8,11 +8,12 @@ A research companion for **NotebookLM** that automates the collection of NSE com
 
 ## 🚀 Instant Setup (AI Agents)
 
-Copy and paste this prompt into your AI coding assistant to start researching Indian stocks immediately:
+Install the [knowledgelm-nse](https://github.com/eggmasonvalue/knowledgelm-nse) agent skill using 
 
-> **Install the [`knowledgelm-nse`](`https://github.com/eggmasonvalue/KnowledgeLM`)(path:`.agent/skills/knowledgelm-nse/`) agent skill in your global skills directory.**
+> `npx skills add eggmasonvalue/knowledgelm-nse`
 
- This skill allows your AI agent to batch download investor materials (transcripts, presentations, credit ratings, annual reports) for Indian publicly listed companies and integrate them into NotebookLM for deep fundamental analysis.
+
+This skill allows your AI agent to batch download investor materials (transcripts, presentations, credit ratings, annual reports) for Indian publicly listed companies and integrate them into NotebookLM for deep fundamental analysis.
  
 ---
 
@@ -22,6 +23,7 @@ Copy and paste this prompt into your AI coding assistant to start researching In
 - **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.
 - **Credit Rating Dual-Source**: Primary extraction from Screener.in (high-fidelity PDF conversion) with NSE API fallback.
+- **ValuePickr Forum Export**: Export entire forum threads to clean, research-ready PDFs with reference extraction.
 - **Interactive UI**: Browse and download individual filings (Resignations, Press Releases, etc.) via Streamlit.
 
 ## �️ Manual Installation & Usage
@@ -37,8 +39,12 @@ uv tool install knowledgelm
 # Download filings
 knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
 
+# Export forum thread
+knowledgelm forum "https://forum.valuepickr.com/t/hdfc-bank-limited/123" --symbol HDFCBANK
+
 # Process for NotebookLM
 knowledgelm list-files ./HDFCBANK_filings --json
+knowledgelm list-files ./HDFCBANK_valuepickr --json
 ```
 
 ### Web UI
