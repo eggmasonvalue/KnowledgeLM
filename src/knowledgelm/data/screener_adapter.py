@@ -1,9 +1,7 @@
 """Adapter for fetching data from Screener.in."""
 
 import os
-
-# Silence webdriver_manager logs
-os.environ["WDM_LOG"] = "0"
+import shutil
 import base64
 import logging
 import subprocess
@@ -29,7 +27,6 @@ try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
 
     SELENIUM_AVAILABLE = True
 except ImportError:
@@ -70,11 +67,24 @@ def _download_with_selenium(url: str, output_path: Path) -> bool:
         options.add_argument("--no-sandbox")
         options.add_argument("--log-level=3")  # Fatal only, silences DevTools listening...
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        # Ensure we are not blocking downloads (though we are printing)
+        
+        # Determine ChromeDriver path (Priority: Env Var -> System Path -> Selenium Manager)
+        service_args = {"log_output": subprocess.DEVNULL}
+        
+        # Check explicit path first to support ARM Linux / Termux where Selenium Manager fails
+        # System-installed driver (e.g. `apt install chromium-chromedriver`) is preferred there.
+        chromedriver_path = os.environ.get("CHROMEDRIVER_PATH") or shutil.which("chromedriver")
+        if chromedriver_path:
+            logger.debug(f"Using system ChromeDriver at {chromedriver_path}")
+            service_args["executable_path"] = chromedriver_path
+        else:
+            logger.debug("System ChromeDriver not found, relying on Selenium Manager")
 
-        service = Service(ChromeDriverManager().install(), log_output=subprocess.DEVNULL)
+        service = Service(**service_args)
+        
         if os.name == "nt":
             service.creation_flags = subprocess.CREATE_NO_WINDOW
+            
         driver = webdriver.Chrome(service=service, options=options)
 
         logger.debug(f"Rendering {url} via Selenium...")

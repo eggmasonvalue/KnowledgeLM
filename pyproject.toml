@@ -14,7 +14,6 @@ dependencies = [
     "markdownify",
     "weasyprint",
     "selenium>=4.40.0",
-    "webdriver-manager>=4.0.2",
     "click>=8.1.0",
 ]
 

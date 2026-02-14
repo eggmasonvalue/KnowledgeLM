@@ -26,6 +26,17 @@ This skill allows your AI agent to batch download investor materials (transcript
 - **ValuePickr Forum Export**: Export entire forum threads to clean, research-ready PDFs with reference extraction.
 - **Interactive UI**: Browse and download individual filings (Resignations, Press Releases, etc.) via Streamlit.
 
+### 🐧 ARM / Linux Setup (Termux, Raspberry Pi, Android AVF)
+
+On ARM Linux devices, official Selenium Manager binaries are unavailable. You must manually install `chromedriver` using your system's package manager.
+
+```bash
+# Example (Debian/Ubuntu/Termux):
+sudo apt install chromium-driver  # Package names vary (e.g. chromium, chromium-chromedriver, etc.)
+```
+
+**Requirement**: Ensure `chromedriver` is available in your `$PATH`. The tool will automatically detect and use it.
+
 ## �️ Manual Installation & Usage
 
 If you prefer to use the tool directly from your terminal:

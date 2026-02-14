@@ -11,6 +11,10 @@
   - **ValuePickr Dedicated Folders**: Forum downloads now save to a dedicated `SYMBOL_valuepickr` folder (or `slug_valuepickr` if symbol not provided), keeping PDF and references grouped together.
   - Added `--symbol` (`-s`) option to `forum` command for explicit folder naming.
 
+### Fixes
+- **ARM Linux Compatibility**: Replaced `webdriver-manager` with native Selenium Manager and system-path prioritization. This fixes `Exec format error` on ARM Linux (Termux/Android) by allowing use of pre-installed `chromium-chromedriver` while maintaining zero-config support for Windows/Mac.
+- **Selenium Manager Migration**: Migrated from `webdriver-manager` to native Selenium Manager for improved driver management and compatibility.
+
 ### Distribution & Scaling
 - **Skill Repository Integration**: Updated `knowledgelm-nse` agent skill submodule to the latest version.
 - **Submodule Integration**: Converted the local skill directory into a Git submodule, allowing for unified updates while maintaining standalone distribution.
