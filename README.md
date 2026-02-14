@@ -1,6 +1,6 @@
 # KnowledgeLM 🧠
 
-[![Version](https://img.shields.io/badge/version-4.2.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.2.1-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Built with uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
 
@@ -19,7 +19,7 @@ This skill allows your AI agent to batch download investor materials (transcript
 
 ## ✨ Features
 
-- **Agent-First**: Optimized for LLMs with JSON output (`--json`) and a standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md).
+- **Agent-First**: Optimized for LLMs with JSON output (`--json`), a standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution to preserve the context window.
 - **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.
 - **Credit Rating Dual-Source**: Primary extraction from Screener.in (high-fidelity PDF conversion) with NSE API fallback.

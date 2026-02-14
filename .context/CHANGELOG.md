@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-02-14
+
+### Documentation
+- **Formalized Agent-First Design Principles**: Added strict development guidelines to `.context/OVERVIEW.md` and `.context/CONVENTIONS.md`.
+  - Mandatory silent execution (no `print()` or `stdout`/`stderr` noise).
+  - Explicit error handling via exceptions and non-zero CLI exit codes.
+  - Requirement for log file usage (`knowledgelm.log`) for all diagnostic information to preserve LLM context window.
+
+### Fixes
+- **Silent CLI Execution**: Refactored `cli.py` to route all informational and error messages to `knowledgelm.log` when JSON output is not requested. This ensures a clean terminal stream for AI agents.
+- **ValuePickr PDF Generator Cleanup**: 
+  - Standardized webdriver initialization in `forum.py` to match `screener_adapter.py`.
+  - Migrated to native Selenium Manager and removed the legacy `webdriver-manager` dependency.
+  - Implemented Selenium silencing (log redirection and headless flags) to preserve LLM context.
+  - Added conditional Selenium imports for improved library resilience.
+
+### Cleanup
+- **Dependency Purge**: Removed unused legacy dependencies `markdownify` and `weasyprint` from `pyproject.toml` and updated `uv.lock`.
+
 ## [4.2.0] - 2026-02-11
 
 ### Features

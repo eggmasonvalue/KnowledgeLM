@@ -18,6 +18,15 @@ A CLI and Streamlit web app for batch downloading NSE company announcements by c
 - **ValuePickr Export**: Download entire forum threads as clean PDFs for deep research
 - **NotebookLM Integration**: Skill includes workflow for adding downloads as notebook sources
 
+## Agent-First Design Principles
+
+KnowledgeLM is built with **AI Agents** as its primary users. To ensure optimal performance and context management for LLMs, all development must adhere to these rules:
+
+- **Silent Execution**: Never use `print()` or write to `stdout`/`stderr`. All progress and debugging output must be routed through the `logging` module to a log file (`knowledgelm.log`).
+- **Context Preservation**: Terminal noise pollutes the LLM context window and degrades reasoning capability. Commands should be silent unless a structured result (e.g., JSON) is requested.
+- **Structured Error Handling**: Communicate failures via standard Python exceptions and non-zero CLI exit codes. This enables programmatic error detection for both agents and scripts.
+- **Functional Scriptability**: Code is designed to be idempotent and safely usable in automated research pipelines by separating execution logic from reporting.
+
 ## Tech Stack
 
 | Layer | Technology |

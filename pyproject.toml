@@ -1,6 +1,6 @@
 [project]
 name = "knowledgelm"
-version = "4.2.0"
+version = "4.2.1"
 description = "A NotebookLM companion for batch downloading NSE company announcements"
 readme = "README.md"
 license = { text = "MIT" }
@@ -11,8 +11,6 @@ dependencies = [
     "nse",
     "requests",
     "beautifulsoup4",
-    "markdownify",
-    "weasyprint",
     "selenium>=4.40.0",
     "click>=8.1.0",
 ]

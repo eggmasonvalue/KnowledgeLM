@@ -107,6 +107,15 @@ KnowledgeLM/
 ### utils/file_utils.py
 - **`sanitize_folder_name`**: Prevents path traversal security issues.
 
+## Context Management Strategy
+
+Given the **Agent-First** nature of the codebase, a core architectural requirement is the preservation of the LLM context window:
+
+1.  **I/O Isolation**: The CLI (`src/knowledgelm/cli.py`) is the only component allowed to output to the terminal. All other layers must remain silent.
+2.  **Redirected Logs**: Any accidental output or third-party library noise (e.g., from `nse` or Selenium) is intercepted and redirected to `knowledgelm.log`.
+3.  **Clean Signal**: Command results are provided as structured data (JSON) only when explicitly requested. This ensures the agent is not overwhelmed by verbose progress bars or debugging text.
+4.  **Bubbled Exceptions**: Functional logic uses standard Python exceptions which are caught at the entry point to decide the exit code and log the failure, rather than printing to `stderr`.
+
 ## Data Flow
 
 ```mermaid

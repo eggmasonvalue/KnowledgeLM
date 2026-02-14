@@ -26,10 +26,11 @@ Export entire ValuePickr (Discourse) threads for offline reading and AI analysis
     - **High Signal**: Strips usernames, avatars, signatures, and badges. Only retains Dates and Content.
     - **Reliability**: Uses JSON API for data fetching (avoids fragile HTML scraping) and Headless Chrome for rendering.
 
-## [done] Agent-First Design (v3.0)
+## [done] Agent-First Design (v4.2.1)
 
 - **Standardized Skill**: `SKILL.md` compliant with [Agent Skills](https://agentskills.io) standard, hosted in a [separate public repository](https://github.com/eggmasonvalue/knowledgelm-nse) for decoupled distribution.
-- **Automation workflows**: Optimized for LLM tools (Claude Code, Gemini CLI, etc.).
+- **Context Preservation**: Strictly silent execution (no `stdout`/`stderr` noise) to prevent LLM context window pollution.
+- **Automation workflows**: Optimized for LLM tools (Claude Code, Gemini CLI, etc.) with structured JSON results.
 - **NotebookLM Synergy**: Purpose-built `list-files --json` command to facilitate source injection.
 
 ## [done] Credit Rating Dual-Source

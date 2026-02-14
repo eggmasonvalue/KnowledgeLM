@@ -55,7 +55,7 @@ def parse_date(date_str: str) -> datetime:
 
 
 @click.group()
-@click.version_option(version="4.2.0", prog_name="knowledgelm")
+@click.version_option(version="4.2.1", prog_name="knowledgelm")
 def main():
     r"""KnowledgeLM - Batch download NSE company announcements.
 
@@ -132,10 +132,9 @@ def download(
         start = parse_date(from_date)
         end = parse_date(to_date)
     except click.BadParameter as e:
+        logger.error(f"Invalid date format: {e}")
         if output_json:
             click.echo(json.dumps({"error": str(e), "success": False}))
-        else:
-            click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
     # Determine output directory
@@ -152,10 +151,9 @@ def download(
     invalid = set(selected_categories) - valid_cats
     if invalid:
         msg = f"Invalid categories: {', '.join(invalid)}. Valid: {', '.join(valid_cats)}"
+        logger.error(msg)
         if output_json:
             click.echo(json.dumps({"error": msg, "success": False}))
-        else:
-            click.echo(f"Error: {msg}", err=True)
         sys.exit(1)
 
     options = {
@@ -185,27 +183,25 @@ def download(
         }
 
         if output_json:
+            logger.info(f"Producing JSON result for {symbol.upper()}")
             click.echo(json.dumps(result, indent=2))
         else:
-            click.echo(f"✓ Downloaded filings for {symbol.upper()}")
-            click.echo(f"  Output: {result['output_directory']}")
-            click.echo("  Categories:")
+            logger.info(f"✓ Downloaded filings for {symbol.upper()}")
+            logger.info(f"  Output: {result['output_directory']}")
+            logger.info("  Categories:")
             for cat, count in counts.items():
-                click.echo(f"    - {cat}: {count} files")
-            click.echo(f"  Total: {result['total_files']} files")
+                logger.info(f"    - {cat}: {count} files")
+            logger.info(f"  Total: {result['total_files']} files")
 
     except ValueError as e:
+        logger.error(f"Value error during download: {e}")
         if output_json:
             click.echo(json.dumps({"error": str(e), "success": False}))
-        else:
-            click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
         logger.exception("Unexpected error during download")
         if output_json:
             click.echo(json.dumps({"error": str(e), "success": False}))
-        else:
-            click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
 
@@ -227,11 +223,12 @@ def list_categories(output_json: bool):
     }
 
     if output_json:
+        logger.info("Producing JSON list of categories")
         click.echo(json.dumps(categories, indent=2))
     else:
-        click.echo("Available categories:")
+        logger.info("Available categories:")
         for cat, info in categories.items():
-            click.echo(f"  {cat}: {info['label']}")
+            logger.info(f"  {cat}: {info['label']}")
 
 
 @main.command("list-files")
@@ -279,12 +276,13 @@ def list_files(directory: str, output_json: bool, exclude: tuple):
     }
 
     if output_json:
+        logger.info(f"Producing JSON file list for {directory}")
         click.echo(json.dumps(result, indent=2))
     else:
-        click.echo(f"Files in {directory}:")
+        logger.info(f"Files in {directory}:")
         for f in files:
-            click.echo(f"  [{f['category']}] {f['name']}")
-        click.echo(f"\nTotal: {len(files)} files")
+            logger.info(f"  [{f['category']}] {f['name']}")
+        logger.info(f"\nTotal: {len(files)} files")
 
 
 @main.command("forum")
@@ -300,8 +298,11 @@ def list_files(directory: str, output_json: bool, exclude: tuple):
 def download_forum(url: str, symbol: Optional[str], output: Optional[str], output_json: bool):
     """Download a ValuePickr forum thread as a clean PDF.
 
-    Arguments:
-        URL: The full URL of the ValuePickr thread.
+    Args:
+        url: The full URL of the ValuePickr thread.
+        symbol: Optional company symbol for the filename and folder.
+        output: Optional custom output directory.
+        output_json: Whether to output the result as JSON.
     """
     configure_logging()
 
@@ -354,17 +355,16 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str], outpu
         }
 
         if output_json:
+            logger.info(f"Producing JSON forum result for {url}")
             click.echo(json.dumps(result, indent=2))
         else:
-            click.echo(f"✓ Successfully saved thread to {result['output_path']}")
-            click.echo(f"✓ References extracted to {result['references_path']}")
+            logger.info(f"✓ Successfully saved thread to {result['output_path']}")
+            logger.info(f"✓ References extracted to {result['references_path']}")
 
     except Exception as e:
         logger.exception("Failed to download forum thread")
         if output_json:
             click.echo(json.dumps({"error": str(e), "success": False}))
-        else:
-            click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
 

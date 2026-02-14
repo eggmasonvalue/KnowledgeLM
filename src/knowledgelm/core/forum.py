@@ -4,6 +4,8 @@ import base64
 import logging
 import os
 import re
+import shutil
+import subprocess
 import tempfile
 import time
 from datetime import datetime
@@ -12,6 +14,10 @@ from typing import Any, Dict, List, Tuple
 
 import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.print_page_options import PrintOptions
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +138,8 @@ class ForumClient:
         for i in range(0, len(missing_ids), BATCH_SIZE):
             batch = missing_ids[i : i + BATCH_SIZE]
             logger.info(
-                f"Fetching posts {i + 1} to {min(i + BATCH_SIZE, len(missing_ids))} of {len(missing_ids)} remaining..."
+                f"Fetching posts {i + 1} to {min(i + BATCH_SIZE, len(missing_ids))} "
+                f"of {len(missing_ids)} remaining..."
             )
 
             try:
@@ -155,11 +162,6 @@ class ForumClient:
         }
 
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-
 
 class PDFGenerator:
     """Generates a clean PDF from forum thread data using Headless Chrome."""
@@ -176,7 +178,8 @@ class PDFGenerator:
         font-size: 16px;
     }
     h1 {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            Helvetica, Arial, sans-serif;
         font-size: 28px;
         color: #2c3e50;
         border-bottom: 2px solid #eee;
@@ -279,7 +282,7 @@ class PDFGenerator:
 
         full_html = "\n".join(html_content)
 
-        logger.info("Generating PDF using Headless Chrome...")
+        logger.debug("Generating PDF using Headless Chrome...")
 
         # Write HTML to temp file
         with tempfile.NamedTemporaryFile(
@@ -292,18 +295,30 @@ class PDFGenerator:
         try:
             chrome_options = Options()
             chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--log-level=3")
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
-            # Auto-install/manage chromedriver
-            service = Service(ChromeDriverManager().install())
+            service_args = {"log_output": subprocess.DEVNULL}
+            chromedriver_path = (
+                os.environ.get("CHROMEDRIVER_PATH") or shutil.which("chromedriver")
+            )
+            if chromedriver_path:
+                logger.debug(f"Using system ChromeDriver at {chromedriver_path}")
+                service_args["executable_path"] = chromedriver_path
+            else:
+                logger.debug("System ChromeDriver not found, relying on Selenium Manager")
+
+            service = Service(**service_args)
+            if os.name == "nt":
+                service.creation_flags = subprocess.CREATE_NO_WINDOW
+
             driver = webdriver.Chrome(service=service, options=chrome_options)
-
+            logger.debug(f"Rendering {temp_html_path} via Selenium...")
             driver.get(f"file:///{temp_html_path}")
 
             # Use specific print options for A4
-            from selenium.webdriver.common.print_page_options import PrintOptions
-
             print_options = PrintOptions()
             print_options.background = True
 

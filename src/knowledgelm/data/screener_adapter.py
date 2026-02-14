@@ -1,9 +1,9 @@
 """Adapter for fetching data from Screener.in."""
 
-import os
-import shutil
 import base64
 import logging
+import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -67,10 +67,10 @@ def _download_with_selenium(url: str, output_path: Path) -> bool:
         options.add_argument("--no-sandbox")
         options.add_argument("--log-level=3")  # Fatal only, silences DevTools listening...
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        
+
         # Determine ChromeDriver path (Priority: Env Var -> System Path -> Selenium Manager)
         service_args = {"log_output": subprocess.DEVNULL}
-        
+
         # Check explicit path first to support ARM Linux / Termux where Selenium Manager fails
         # System-installed driver (e.g. `apt install chromium-chromedriver`) is preferred there.
         chromedriver_path = os.environ.get("CHROMEDRIVER_PATH") or shutil.which("chromedriver")
@@ -81,10 +81,10 @@ def _download_with_selenium(url: str, output_path: Path) -> bool:
             logger.debug("System ChromeDriver not found, relying on Selenium Manager")
 
         service = Service(**service_args)
-        
+
         if os.name == "nt":
             service.creation_flags = subprocess.CREATE_NO_WINDOW
-            
+
         driver = webdriver.Chrome(service=service, options=options)
 
         logger.debug(f"Rendering {url} via Selenium...")

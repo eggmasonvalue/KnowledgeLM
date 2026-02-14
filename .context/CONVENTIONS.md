@@ -43,14 +43,16 @@ if "data" not in st.session_state:
 ```
 
 ### Error Handling
-- Use `logging` module (not `print()`)
-- Catch specific exceptions (`requests.RequestException`, `ValueError`)
-- Fail gracefully in UI (show error message but don't crash)
+- **Exceptions for Failures**: Failures must be communicated via standard Python exceptions.
+- **CLI Exit Codes**: CLI commands must return appropriate non-zero exit codes on failure to enable programmatic detection.
+- **No Silent Crashes**: Catch specific exceptions (`requests.RequestException`, `ValueError`) but always propagate or log them for the agent to see in logs.
+- **Fail gracefully in UI**: Show error messages in the Streamlit UI but don't crash the server.
 
 ### Logging & Output
-- **No `print()`**: All output must go through `logger`.
-- **Third-Party Noise**: Use `log_utils.redirect_stdout_to_logger` for libraries that print to stdout (e.g., `nse`).
-- **Silence Warnings**: Explicitly suppress expected non-critical warnings (e.g., `InsecureRequestWarning` for specific legacy sites).
+- **Strict No-Print Policy**: Do not use `print()` or `sys.stdout.write()`. All diagnostic info must go to `knowledgelm.log`.
+- **Zero Terminal Noise**: Standard production runs should remain silent on `stdout`/`stderr` to preserve LLM context window space.
+- **Third-Party Noise**: Use `log_utils.redirect_stdout_to_logger` or devnull redirects for libraries (Selenium, nse) that print to terminal.
+- **Structured Results**: Use JSON output via the CLI when requested for easy agent parsing.
 
 ## UI Components
 
