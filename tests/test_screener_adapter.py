@@ -131,6 +131,42 @@ def test_download_credit_ratings_html_fallback(mock_selenium_download, mock_open
     args, _ = mock_selenium_download.call_args
     assert args[0] == "http://example.com/rating.html"
 
+def test_download_credit_ratings_skip_existing(mock_requests):
+    """Test skipping existing files."""
+    mock_get, _ = mock_requests
+
+    html_content = """
+    <html>
+        <body>
+            <div class="documents credit-ratings">
+                <h3>Credit Ratings</h3>
+                <ul class="list-links">
+                    <li>
+                        <a href="http://example.com/existing.pdf">
+                            Existing File
+                            <div class="ink-600 smaller">Date</div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </body>
+    </html>
+    """
+
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.text = html_content
+
+    # Simulate existing file
+    with patch("pathlib.Path.glob") as mock_glob:
+        # The code generates filename as "CreditRating-{date}.pdf"
+        # Date will be "Date" from the HTML
+        mock_glob.return_value = [Path("CreditRating-Date.pdf")]
+
+        count = download_credit_ratings_from_screener("SYMBOL", Path("/tmp"))
+
+        # Should be 0 because it's skipped
+        assert count == 0
+
 def test_download_with_selenium_success(mock_selenium_driver, monkeypatch):
     """Test _download_with_selenium success."""
     # We need to ensure SELENIUM_AVAILABLE is True.
@@ -161,3 +197,10 @@ def test_download_with_selenium_failure(mock_selenium_driver):
 
     assert result is False
     mock_driver.quit.assert_called_once()
+
+def test_download_with_selenium_import_error():
+    """Test behavior when Selenium is not installed."""
+    # We need to patch SELENIUM_AVAILABLE in the module
+    with patch("knowledgelm.data.screener_adapter.SELENIUM_AVAILABLE", False):
+        result = _download_with_selenium("http://url", Path("out"))
+        assert result is False

@@ -42,3 +42,7 @@ Thumbs.db
 
 # Developer-only references
 PUBLISHING.md
+
+# Test coverage
+.coverage
+htmlcov/

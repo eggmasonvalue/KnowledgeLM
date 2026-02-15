@@ -121,6 +121,33 @@ def test_generate_thread_pdf(mock_selenium_driver):
         mock_driver.print_page.assert_called()
         mock_open.assert_called()
 
+def test_pdf_generator_driver_not_found():
+    """Test PDF generation when ChromeDriver is not found."""
+    # We need to unset CHROMEDRIVER_PATH env var and make shutil.which return None
+    with patch.dict("os.environ", {}, clear=True), \
+         patch("shutil.which", return_value=None), \
+         patch("knowledgelm.core.forum.webdriver.Chrome") as mock_chrome:
+
+        generator = PDFGenerator()
+        thread_data = {"title": "Test", "posts": []}
+
+        # Should rely on Selenium Manager (Service default)
+        # We just want to ensure no exception is raised during Service creation if we don't pass executable_path
+
+        with patch("knowledgelm.core.forum.Service") as mock_service:
+            # We also mock print_page to avoid actual execution
+            mock_driver = mock_chrome.return_value
+            mock_print_resp = MagicMock()
+            mock_print_resp.data = "dGVzdA=="
+            mock_driver.print_page.return_value = mock_print_resp
+
+            with patch("builtins.open", new_callable=MagicMock):
+                generator.generate_thread_pdf(thread_data, Path("out.pdf"))
+
+            # Verify Service was called without executable_path
+            call_args = mock_service.call_args[1]
+            assert "executable_path" not in call_args
+
 # --- ReferenceExtractor Tests ---
 
 def test_extract_references():
@@ -163,3 +190,40 @@ def test_extract_references_empty():
 
     md = extractor.extract_references(thread_data)
     assert "No external references found" in md
+
+def test_extract_references_legacy():
+    """Test fallback extraction from HTML content."""
+    extractor = ReferenceExtractor()
+
+    # Simulate data without 'links' in details
+    thread_data = {
+        "title": "Thread",
+        "slug": "slug",
+        "id": 123,
+        "details": {},
+        "posts": [
+            {
+                "post_number": 1,
+                "created_at": "2023-01-01T10:00:00Z",
+                "cooked": '<p>Check <a href="http://external.com/1">Link 1</a></p>'
+            },
+            {
+                "post_number": 2,
+                "cooked": '<p>Internal <a href="https://forum.valuepickr.com/t/1">Internal</a></p>'
+            }
+        ]
+    }
+
+    # We force the use of _extract_references_from_html by calling it directly
+    # OR by ensuring 'links' is empty (which triggers the "No external references" message in the main method,
+    # unless we modify the code to fallback.
+    # Looking at forum.py:
+    # if not links: return ... "No external references found"
+    # It seems the fallback call is commented out: # return self._extract_references_from_html(thread_data)
+
+    # So we must call the legacy method directly to test it.
+    md = extractor._extract_references_from_html(thread_data)
+
+    assert "Link 1" in md
+    assert "http://external.com/1" in md
+    assert "Internal" not in md # Should be skipped
