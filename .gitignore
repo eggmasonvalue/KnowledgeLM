@@ -20,6 +20,7 @@ Thumbs.db
 
 # Artifacts and downloads
 *_artifacts*/
+*_filings*/
 *.pdf
 *.xlsx
 *.csv

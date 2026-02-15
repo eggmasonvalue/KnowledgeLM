@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Tuple
 from knowledgelm.config import (
     ANNUAL_REPORTS_FOLDER,
     DOWNLOAD_CATEGORIES_CONFIG,
+    ISSUE_DOCS_CONFIG,
+    ISSUE_DOCS_FOLDER,
 )
 from knowledgelm.data.nse_adapter import NSEAdapter
 from knowledgelm.data.screener_adapter import download_credit_ratings_from_screener
@@ -94,6 +96,12 @@ class KnowledgeService:
                     symbol, announcements, nse_adapter, download_dir
                 )
                 category_counts[label] = count
+                continue
+
+            # Special Case: Issue Documents
+            if cat_key == "issue_documents":
+                issue_counts = self._process_issue_documents(symbol, nse_adapter, download_dir)
+                category_counts.update(issue_counts)
                 continue
 
             # Standard Categories - apply filter and download matching items
@@ -209,3 +217,91 @@ class KnowledgeService:
                     count += 1
                     downloaded_files.add(filename)
         return count
+
+    def _process_issue_documents(
+        self,
+        symbol: str,
+        adapter: NSEAdapter,
+        root_dir: Path,
+    ) -> Dict[str, int]:
+        """Fetch and download all issue documents for a company.
+
+        Iterates over all issue document types (offer docs for rights and QIP issues,
+        info memo, scheme of arrangement docs), fetches each API endpoint, filters for
+        the given symbol, and downloads all available attachments.
+
+        Args:
+            symbol: Stock symbol (e.g., 'HDFCBANK').
+            adapter: Initialized NSEAdapter with active session.
+            root_dir: Root download directory for this symbol.
+
+        Returns:
+            Dict mapping document type labels to download counts.
+        """
+        issue_dir = root_dir / ISSUE_DOCS_FOLDER
+        issue_dir.mkdir(parents=True, exist_ok=True)
+
+        # Resolve company name for endpoints where symbol is unreliable
+        company_name = adapter.get_company_name(symbol)
+        logger.info(f"Resolved company name for {symbol}: '{company_name}'")
+
+        counts: Dict[str, int] = {}
+
+        for doc_type, config in ISSUE_DOCS_CONFIG.items():
+            label = config["label"]
+            api_path = config["api_path"]
+            api_params = config["api_params"]
+            attachment_fields = config["attachment_fields"]
+            subfolder = config["subfolder"]
+            symbol_reliable = config["symbol_reliable"]
+
+            # Fetch all documents from this endpoint
+            documents = adapter.get_issue_documents(api_path, api_params)
+            if not documents:
+                logger.info(f"No {label} records returned from API")
+                counts[label] = 0
+                continue
+
+            # Filter for matching records
+            matching = []
+            if symbol_reliable:
+                # Match on symbol field directly
+                matching = [
+                    doc
+                    for doc in documents
+                    if str(doc.get("symbol", "")).strip().upper() == symbol.upper()
+                ]
+            else:
+                # Match on company name (primary method for offer docs & info memo)
+                if company_name:
+                    company_lower = company_name.strip().lower()
+                    matching = [
+                        doc
+                        for doc in documents
+                        if company_lower in str(doc.get("company", "")).strip().lower()
+                        or str(doc.get("company", "")).strip().lower() in company_lower
+                    ]
+
+            if not matching:
+                logger.info(f"No {label} found for {symbol}")
+                counts[label] = 0
+                continue
+
+            # Download attachments
+            doc_folder = issue_dir / subfolder
+            doc_folder.mkdir(parents=True, exist_ok=True)
+
+            count = 0
+            for doc in matching:
+                for field in attachment_fields:
+                    url = str(doc.get(field, "") or "").strip()
+                    if not url or url == "-" or url == "null":
+                        continue
+
+                    if adapter.download_and_extract(url, doc_folder):
+                        count += 1
+
+            counts[label] = count
+            logger.info(f"Downloaded {count} {label} file(s) for {symbol}")
+
+        return counts

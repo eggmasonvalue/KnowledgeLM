@@ -16,8 +16,13 @@ from knowledgelm.config import (
 from knowledgelm.core.service import KnowledgeService
 from knowledgelm.utils.file_utils import get_download_path
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Configure logging — route to file, keep terminal clean
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filename="knowledgelm.log",
+    filemode="a",
+)
 
 # --- Constants ---
 DOWNLOAD_KEY_PREFIX = {
@@ -74,15 +79,16 @@ def get_config_key(cat):
 
 with col_dl1:
     download_transcripts = st.checkbox("Analyst Call Transcripts")
-    download_credit_rating = st.checkbox(
-        "Credit Ratings",
-        help="Primary source: Screener.in. Fallback: NSE Filings.",
-    )
+    download_credit_rating = st.checkbox("Credit Ratings")
 with col_dl2:
     download_investor_presentations = st.checkbox("Investor Presentations")
     download_related_party_txns = st.checkbox("Related Party Transactions")
 with col_dl3:
     download_annual_reports = st.checkbox("Download Annual Reports", value=False)
+    download_issue_documents = st.checkbox(
+        "Issue Documents",
+        help="IPO, Rights, QIP offer docs, info memoranda, scheme of arrangement docs.",
+    )
     annual_reports_download_all = False
     if download_annual_reports:
         ar_mode = st.radio(
@@ -125,6 +131,7 @@ if st.button("Fetch Filings"):
                 "download_credit_rating": download_credit_rating,
                 "download_related_party_txns": download_related_party_txns,
                 "download_annual_reports": download_annual_reports,
+                "download_issue_documents": download_issue_documents,
             }
 
             data, category_counts = service.process_request(

@@ -1,6 +1,19 @@
 # Changelog
 
 ## [Unreleased]
+- No changes yet.
+
+## [5.0.0] - 2026-02-15
+
+### Features
+- **Issue Documents**: New `issue_documents` category in the `download` command for batch downloading company share issue documents from NSE:
+  - **5 Document Types**: Offer Documents (IPO prospectus/DRHP/RHP), Rights Issue drafts/finals, QIP Offer docs, Information Memoranda, and Scheme of Arrangement documents.
+  - **Smart Matching**: Uses symbol-based matching for Rights/QIP/Scheme endpoints and company-name resolution (via `equityMetaInfo`) for Offer Docs/Info Memo where NSE symbol fields are unreliable.
+  - **ZIP Handling**: Automated extraction of ZIP archives (common for draft offer documents).
+  - **Streamlit UI**: New "Issue Documents" checkbox in Download Categories.
+  - **CLI**: `knowledgelm download SYMBOL --from DATE --to DATE --categories issue_documents`
+  - **Output**: `{SYMBOL}_filings/issue_documents/{type}/` subfolder structure.
+- **Resignations CLI**: New `resignations` standalone query command returning structured JSON with dates, descriptions, and filing URLs. No files downloaded — designed as a lightweight data query for agents and investors.
 
 ## [4.2.1] - 2026-02-14
 

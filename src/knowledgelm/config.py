@@ -44,6 +44,57 @@ DOWNLOAD_CATEGORIES_CONFIG = {
         "enabled_arg": "download_annual_reports",
         "label": "annual report",
     },
+    "issue_documents": {
+        "enabled_arg": "download_issue_documents",
+        "label": "issue document",
+    },
+}
+
+# --- Issue Documents Config ---
+ISSUE_DOCS_FOLDER = "issue_documents"
+
+ISSUE_DOCS_CONFIG = {
+    "offer_documents": {
+        "label": "Offer Documents (IPO)",
+        "api_path": "/corporates/offerdocs",
+        "api_params": {"index": "equities"},
+        # "attachment_fields": ["drhpAttach", "rhpAttach", "fpAttach"],
+        "attachment_fields": ["fpAttach"],
+        "subfolder": "offer_documents",
+        "symbol_reliable": False,
+    },
+    "rights_issue": {
+        "label": "Rights Issue",
+        "api_path": "/corporates/offerdocs/rights",
+        "api_params": {"index": "equities"},
+        "attachment_fields": ["draftAttch", "finalAttach"],
+        "subfolder": "rights_issue",
+        "symbol_reliable": True,
+    },
+    "qip_offer": {
+        "label": "QIP Offer",
+        "api_path": "/corporates/offerdocs/rights",
+        "api_params": {"index": "qip"},
+        "attachment_fields": ["attachFile"],
+        "subfolder": "qip_offer",
+        "symbol_reliable": False,
+    },
+    "info_memorandum": {
+        "label": "Information Memorandum",
+        "api_path": "/corporates/offerdocs/arrangementscheme/infomemo",
+        "api_params": {},
+        "attachment_fields": ["date_attachmnt"],
+        "subfolder": "info_memorandum",
+        "symbol_reliable": False,
+    },
+    "scheme_document": {
+        "label": "Scheme of Arrangement",
+        "api_path": "/corporates/offerdocs/arrangementscheme",
+        "api_params": {},
+        "attachment_fields": ["date_attachmnt"],
+        "subfolder": "scheme_document",
+        "symbol_reliable": False,
+    },
 }
 
 # --- Screener.in Scraper Config ---

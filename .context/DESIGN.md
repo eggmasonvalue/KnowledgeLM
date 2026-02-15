@@ -83,6 +83,22 @@ Standardized download destinations for better research organization:
 - **ValuePickr Exports**: `_valuepickr` suffix (e.g., `HDFCBANK_valuepickr`), containing both PDF and references.
 - **Agent Compatibility**: Consistent naming makes it easier for agents to locate sources for NotebookLM.
 
+## [done] Issue Documents (v5.0)
+
+Download company share issue documents from NSE corporate filings:
+- **Document Types**: Offer Documents (IPO), Rights Issue, QIP Offer, Information Memorandum, Scheme of Arrangement.
+- **Category**: `issue_documents` within the existing `download` command — no date range dependency.
+- **API**: 5 NSE endpoints under `/api/corporates/offerdocs/...`, fetched via the `nse` library's session.
+- **Matching**: Symbol-based for Rights, QIP, Schemes; company-name-based (via `equityMetaInfo`) for Offer Docs and Info Memo where symbol fields are unreliable.
+- **ZIP Handling**: Delegated to the `nse` library's native `download_document` which auto-extracts ZIPs.
+- **Output**: `{SYMBOL}_filings/issue_documents/{type}/` subfolder structure.
+
+## [done] Resignations Query CLI (v5.0)
+
+Standalone `knowledgelm resignations` command for querying board-level resignations:
+- **Query, not download**: Returns structured JSON with dates, descriptions, and filing URLs.
+- **Rationale**: Filing headers often suffice; count alone is an investment signal. Bulk PDF downloads are overkill for this category.
+
 ---
 
 ## [idea] Future Enhancements

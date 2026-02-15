@@ -79,7 +79,8 @@ KnowledgeLM/
 ## Component Responsibilities
 
 ### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`)
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`)
+- **Categories**: `issue_documents` added alongside existing download categories
 - **JSON Output**: `--json` flag for agent parsing
 - **Help Discovery**: `--help` on all commands for agent self-discovery
 
@@ -95,6 +96,7 @@ KnowledgeLM/
 ### data/
 - **`nse_adapter.py`**: Wraps the external `nse` library.
   - **Validation**: Checks symbol validity via `equityQuote`.
+  - **Issue Documents**: Fetches 5 NSE corporate filing endpoints via `_req` and resolves company names via `equityMetaInfo`.
 - **`screener_adapter.py`**: Handles scraping from Screener.in.
   - Resolves ICRA PDF links directly.
   - Uses Selenium for high-fidelity HTML-to-PDF conversion.

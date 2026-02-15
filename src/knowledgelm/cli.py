@@ -7,6 +7,7 @@ knowledgelm-nse agent skill.
 Usage:
     knowledgelm --help
     knowledgelm download SYMBOL --from DATE --to DATE
+    knowledgelm resignations SYMBOL --from DATE --to DATE
     knowledgelm list-categories
     knowledgelm list-files DIRECTORY --json
     knowledgelm forum URL
@@ -122,7 +123,7 @@ def download(
     \b
     Available Categories:
         transcripts, investor_presentations, credit_rating, annual_reports,
-        related_party_txns, press_releases
+        related_party_txns, press_releases, issue_documents
     """
     # Configure logging first
     configure_logging()
@@ -365,6 +366,70 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str], outpu
         logger.exception("Failed to download forum thread")
         if output_json:
             click.echo(json.dumps({"error": str(e), "success": False}))
+        sys.exit(1)
+
+
+@main.command()
+@click.argument("symbol")
+@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
+@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
+def resignations(symbol: str, from_date: str, to_date: str):
+    r"""Query board-level resignations and cessations.
+
+    Returns structured JSON with filing dates, descriptions, and attachment
+    URLs. Designed as a query tool — no files are downloaded.
+
+    \b
+    Examples:
+        knowledgelm resignations HDFCBANK --from 2023-01-01 --to 2025-01-26
+        knowledgelm resignations INFY --from 2020-01-01 --to 2025-12-31
+    """
+    configure_logging()
+
+    try:
+        start = parse_date(from_date)
+        end = parse_date(to_date)
+    except click.BadParameter as e:
+        click.echo(json.dumps({"error": str(e), "success": False}))
+        sys.exit(1)
+
+    try:
+        from knowledgelm.data.nse_adapter import NSEAdapter
+
+        adapter = NSEAdapter(Path.cwd())
+
+        if not adapter.validate_symbol(symbol.upper()):
+            click.echo(
+                json.dumps({"error": f"Symbol '{symbol}' not found on NSE.", "success": False})
+            )
+            sys.exit(1)
+
+        announcements = adapter.get_announcements(symbol.upper(), start, end)
+
+        records = [
+            {
+                "date": item.get("an_dt", ""),
+                "description": item.get("attchmntText", "").strip(),
+                "filing_url": item.get("attchmntFile", ""),
+            }
+            for item in announcements
+            if str(item.get("desc", "")).strip().lower() in ["cessation", "resignation"]
+            and item.get("attchmntFile")
+        ]
+
+        result = {
+            "success": True,
+            "symbol": symbol.upper(),
+            "date_range": {"from": from_date, "to": to_date},
+            "total": len(records),
+            "resignations": records,
+        }
+
+        click.echo(json.dumps(result, indent=2))
+
+    except Exception as e:
+        logger.exception("Failed to query resignations")
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
 

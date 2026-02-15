@@ -1,5 +1,3 @@
-"""Adapter for the NSE library."""
-
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -59,6 +57,69 @@ class NSEAdapter:
         except Exception as e:
             logger.error(f"Error downloading document {url}: {e}")
             return False
+
+    def download_and_extract(self, url: str, destination_folder: Path) -> bool:
+        """Download a document, extracting it if it is a ZIP archive.
+
+        Delegates to the NSE library's download_document, which natively
+        handles ZIP extraction.
+
+        Args:
+            url: URL of the document to download.
+            destination_folder: Folder to save/extract the file into.
+
+        Returns:
+            True if download succeeded.
+        """
+        try:
+            with redirect_stdout_to_logger(logger):
+                self.nse.download_document(url, destination_folder)
+            return True
+        except Exception as e:
+            logger.error(f"Error downloading document {url}: {e}")
+            return False
+
+    def get_issue_documents(self, api_path: str, params: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Fetch issue documents from an NSE corporate filings endpoint.
+
+        Uses the NSE library's internal _req method to reuse the session's
+        cookies, headers, and throttling.
+
+        Args:
+            api_path: API path suffix (e.g., '/corporates/offerdocs').
+            params: Query parameters for the request.
+
+        Returns:
+            List of document records from the API.
+        """
+        url = f"{self.nse.base_url}{api_path}"
+        try:
+            with redirect_stdout_to_logger(logger):
+                response = self.nse._req(url, params=params if params else None)
+                return response.json()
+        except Exception as e:
+            logger.error(f"Error fetching issue documents from {api_path}: {e}")
+            return []
+
+    def get_company_name(self, symbol: str) -> str:
+        """Resolve a stock symbol to its full company name.
+
+        Used for matching on endpoints where the symbol field is unreliable
+        (Offer Documents, Information Memorandum).
+
+        Args:
+            symbol: The company stock symbol (e.g., 'HDFCBANK').
+
+        Returns:
+            The full company name, or empty string if resolution fails.
+        """
+        try:
+            with redirect_stdout_to_logger(logger):
+                meta = self.nse.equityMetaInfo(symbol)
+                return meta.get("companyName", "")
+        except Exception as e:
+            logger.error(f"Error resolving company name for {symbol}: {e}")
+            return ""
 
     def validate_symbol(self, symbol: str) -> bool:
         """Check if a symbol is valid using equityQuote.

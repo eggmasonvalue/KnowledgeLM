@@ -162,7 +162,6 @@ class ForumClient:
         }
 
 
-
 class PDFGenerator:
     """Generates a clean PDF from forum thread data using Headless Chrome."""
 
@@ -301,9 +300,7 @@ class PDFGenerator:
             chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
             service_args = {"log_output": subprocess.DEVNULL}
-            chromedriver_path = (
-                os.environ.get("CHROMEDRIVER_PATH") or shutil.which("chromedriver")
-            )
+            chromedriver_path = os.environ.get("CHROMEDRIVER_PATH") or shutil.which("chromedriver")
             if chromedriver_path:
                 logger.debug(f"Using system ChromeDriver at {chromedriver_path}")
                 service_args["executable_path"] = chromedriver_path

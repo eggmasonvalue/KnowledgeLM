@@ -1,6 +1,6 @@
 [project]
 name = "knowledgelm"
-version = "4.2.1"
+version = "5.0.0"
 description = "A NotebookLM companion for batch downloading NSE company announcements"
 readme = "README.md"
 license = { text = "MIT" }

@@ -21,6 +21,7 @@ This skill allows your AI agent to batch download investor materials (transcript
 
 - **Agent-First**: Optimized for LLMs with JSON output (`--json`), a standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution to preserve the context window.
 - **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
+- **Issue Documents**: IPO prospectus, rights offers, QIP placements, information memoranda, and scheme documents — unified across 5 NSE endpoints with inconsistent schemas, unreliable metadata, and mixed archive formats so you don't have to be.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.
 - **Credit Rating Dual-Source**: Primary extraction from Screener.in (high-fidelity PDF conversion) with NSE API fallback.
 - **ValuePickr Forum Export**: Export entire forum threads to clean, research-ready PDFs with reference extraction.
@@ -50,6 +51,9 @@ uv tool install knowledgelm
 # Download filings
 knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
 
+# Download issue documents (IPO, rights, QIP, schemes)
+knowledgelm download SWIGGY --from 2020-01-01 --to 2025-12-31 --categories issue_documents
+
 # Export forum thread
 knowledgelm forum "https://forum.valuepickr.com/t/hdfc-bank-limited/123" --symbol HDFCBANK
 
@@ -63,7 +67,7 @@ knowledgelm list-files ./HDFCBANK_valuepickr --json
 Launch the interactive dashboard:
 
 ```bash
-streamlit run src/knowledgelm/app.py
+uv run streamlit run src/knowledgelm/app.py
 ```
 
 ## 📂 Project Structure
