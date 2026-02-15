@@ -35,6 +35,22 @@ def test_download_success(mock_service_cls):
         mock_service.process_request.assert_called()
 
 @patch("knowledgelm.cli.KnowledgeService")
+def test_download_all_categories(mock_service_cls):
+    """Test download with all categories (default)."""
+    mock_service = mock_service_cls.return_value
+    mock_service.process_request.return_value = ([], {})
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(main, ["download", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31", "--categories", "all"])
+        assert result.exit_code == 0
+
+        args = mock_service.process_request.call_args[1]
+        options = args["options"]
+        # Ensure all options are True
+        assert all(options.values())
+
+@patch("knowledgelm.cli.KnowledgeService")
 def test_download_json(mock_service_cls):
     """Test JSON output for download command."""
     mock_service = mock_service_cls.return_value
@@ -77,6 +93,23 @@ def test_download_invalid_category(mock_service_cls):
         content = log_file.read_text()
         assert "Invalid categories" in content
 
+@patch("knowledgelm.cli.KnowledgeService")
+def test_download_unexpected_error(mock_service_cls):
+    """Test unexpected error handling during download."""
+    mock_service = mock_service_cls.return_value
+    mock_service.process_request.side_effect = Exception("Unexpected")
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(main, ["download", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
+
+        assert result.exit_code != 0
+
+        log_file = Path("knowledgelm.log")
+        assert log_file.exists()
+        content = log_file.read_text()
+        assert "Unexpected error during download" in content
+
 def test_list_categories():
     """Test listing categories."""
     runner = CliRunner()
@@ -115,6 +148,23 @@ def test_list_files():
         content = log_file.read_text()
         assert "file1.pdf" in content
         assert "file2.txt" in content
+
+def test_list_files_exclude():
+    """Test listing files with exclusion."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        p = Path("test_dir")
+        p.mkdir()
+        (p / "file1.pdf").touch()
+        (p / "file2.pkl").touch()
+
+        result = runner.invoke(main, ["list-files", str(p), "--exclude", ".pkl"])
+        assert result.exit_code == 0
+
+        log_file = Path("knowledgelm.log")
+        content = log_file.read_text()
+        assert "file1.pdf" in content
+        assert "file2.pkl" not in content
 
 def test_list_files_json():
     """Test listing files as JSON."""
@@ -171,3 +221,33 @@ def test_forum_command_error(mock_client_cls):
         assert log_file.exists()
         content = log_file.read_text()
         assert "Failed to download forum thread" in content
+
+@patch("knowledgelm.data.nse_adapter.NSEAdapter")
+def test_resignations_success(mock_adapter_cls):
+    """Test resignations command."""
+    mock_adapter = mock_adapter_cls.return_value
+    mock_adapter.validate_symbol.return_value = True
+    mock_adapter.get_announcements.return_value = [
+        {"desc": "cessation", "attchmntFile": "url", "attchmntText": "Resigned"}
+    ]
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["resignations", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["success"] is True
+    assert data["total"] == 1
+    assert data["resignations"][0]["description"] == "Resigned"
+
+@patch("knowledgelm.data.nse_adapter.NSEAdapter")
+def test_resignations_symbol_not_found(mock_adapter_cls):
+    """Test resignations command with invalid symbol."""
+    mock_adapter = mock_adapter_cls.return_value
+    mock_adapter.validate_symbol.return_value = False
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["resignations", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
+    assert result.exit_code == 1
+    data = json.loads(result.output)
+    assert data["success"] is False
+    assert "not found" in data["error"]
