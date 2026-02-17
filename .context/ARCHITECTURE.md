@@ -12,11 +12,13 @@ graph TD
     subgraph Logic["Core Logic"]
         SRV[src/knowledgelm/core/service.py]
         FORUM[src/knowledgelm/core/forum.py<br/>ValuePickr Export]
+        XBRL[src/knowledgelm/core/xbrl_harvester.py<br/>XBRL Harvester]
     end
     
     subgraph Data["Data Layer"]
         NSE_ADPT[src/knowledgelm/data/nse_adapter.py]
         SCR_ADPT[src/knowledgelm/data/screener_adapter.py]
+        XBRL_MAP[src/knowledgelm/xbrl_mapping_bundle/<br/>Mapping Logic & JSON]
     end
     
     subgraph Agent["Agent Resources (External Repos)"]
@@ -36,10 +38,12 @@ graph TD
     
     CLI --> SRV
     CLI --> FORUM
+    CLI --> XBRL
     APP --> SRV
     SRV --> NSE_ADPT
     SRV --> SCR_ADPT
     SRV --> F_UTIL
+    XBRL --> XBRL_MAP
     NSE_ADPT --> NSE_LIB
     SCR_ADPT --> SCR_WEB
     CLI .-> SKILL
@@ -59,10 +63,16 @@ KnowledgeLM/
 │       ├── app.py                # Streamlit UI
 │       ├── config.py             # Configuration
 │       ├── core/
-│       │   └── service.py        # Orchestration Logic
+│       │   ├── service.py        # Orchestration Logic
+│       │   ├── forum.py          # ValuePickr Logic
+│       │   └── xbrl_harvester.py # XBRL Parsing Logic
 │       ├── data/
 │       │   ├── nse_adapter.py    # NSE Library Wrapper
 │       │   └── screener_adapter.py # Screener Scraper
+│       ├── xbrl_mapping_bundle/  # XBRL Mapping Logic
+│       │   ├── generate_mappings.js
+│       │   ├── Ann-xbrl.js
+│       │   └── xbrl_labels.json
 │       └── utils/
 │           └── file_utils.py     # Sanitization & paths
 ├── tests/
@@ -73,25 +83,52 @@ KnowledgeLM/
 │           └── SKILL.md          # Agent Skill (v3.0)
 ├── .context/
 ├── pyproject.toml                # uv config
+## [done] CLI Interface (v3.0)
+
+Full programmatic access via `knowledgelm` command:
+- **Download**: Batch download with automated folder creation.
+- **Discovery**: `--help` on all levels for self-documenting interface.
+- **JSON Output**: `--json` flag for machine readability and AI agent parsing.
+- **Help Discovery**: `--help` on all commands for agent self-discovery
 └── README.md
 ```
 
 ## Component Responsibilities
 
 ### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`)
-- **Categories**: `issue_documents` added alongside existing download categories
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`)
+- **XBRL Support**: Commands to query personnel, key announcements, board outcomes, and shareholder meetings via XBRL harvester.
 - **JSON Output**: `--json` flag for agent parsing
 - **Help Discovery**: `--help` on all commands for agent self-discovery
 
 ### app.py
-- **UI**: Streamlit forms for symbol, dates, category selection.
-- **Display**: Renders status and download tables.
-- **Validations**: Calls `KnowledgeService`.
+- **UI**: Premium card-based layout (`st.container(border=True)`) with a strictly aligned **4x3 checkbox grid**.
+    - Logical grouping preserves "separation of concerns" with XBRL categories in the rightmost column.
+- **UX**: Integrates a JavaScript trigger for automatic smooth-scrolling to the success banner upon download completion.
+- **Validations**: Calls `KnowledgeService` for bulk processing.
 
 ### core/service.py
 - **`KnowledgeService`**: Orchestrates fetching and downloading.
 - **Filters**: Applies business logic (category filters) on fetched data.
+- **Resilience**:
+    - **URL Filtering**: Automatically skips invalid NSE placeholder URLs (e.g., terminating in `/-`).
+    - **Tightened Matching**: Uses significant-substring matching to prevent false positives in issue documents (e.g., avoiding "Bank of India" for "SBIN").
+
+### core/xbrl_harvester.py
+- **`NSEXBRLHarvester`**: Fetches and parses XBRL filings from NSE.
+- **Mapping**: Applies context-aware label mappings to raw XBRL keys.
+
+### XBRL Announcement Harvester
+
+The `NSEXBRLHarvester` provides granular, field-level parsing of corporate announcements (e.g., personnel changes, board outcomes).
+
+- **Standardized Flow**: XBRL categories are integrated into the main `process_request` flow.
+- **Persistence**: Detailed parsed data is saved as `xbrl_details.json` within the symbol's filing folder.
+- **Client Access**: The CLI returns concise metadata (stat and local path) to prevent token bloat, while the UI displays the parsed data in interactive tables.
+
+### xbrl_mapping_bundle/
+- **`generate_mappings.js`**: Node.js script to extract mappings from NSE source.
+- **`xbrl_labels.json`**: Generated mapping file used by the python harvester.
 
 ### data/
 - **`nse_adapter.py`**: Wraps the external `nse` library.
@@ -164,8 +201,10 @@ sequenceDiagram
 ├── credit_rating/
 ├── related_party_txns/
 ├── annual_reports/
-├── resignations/      (Optional: Logical grouping in UI, physical folder relies on user download)
-├── updates/           (Optional: Logical grouping in UI)
+├── personnel_details.json         (Parsed XBRL data)
+├── key_announcements_details.json (Parsed XBRL data)
+├── board_outcome_details.json     (Parsed XBRL data)
+├── shm_details.json               (Parsed XBRL data)
 └── press_releases/    (Optional: Logical grouping in UI)
 
 {symbol}_valuepickr/

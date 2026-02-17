@@ -7,7 +7,10 @@ knowledgelm-nse agent skill.
 Usage:
     knowledgelm --help
     knowledgelm download SYMBOL --from DATE --to DATE
-    knowledgelm resignations SYMBOL --from DATE --to DATE
+    knowledgelm personnel SYMBOL --from DATE --to DATE
+    knowledgelm key-announcements SYMBOL --from DATE --to DATE
+    knowledgelm board-outcome SYMBOL --from DATE --to DATE
+    knowledgelm shareholder-meetings SYMBOL --from DATE --to DATE
     knowledgelm list-categories
     knowledgelm list-files DIRECTORY --json
     knowledgelm forum URL
@@ -373,63 +376,147 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str], outpu
 @click.argument("symbol")
 @click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
 @click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
-def resignations(symbol: str, from_date: str, to_date: str):
-    r"""Query board-level resignations and cessations.
+@click.option(
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    default=False,
+    help="Output results as JSON for agent parsing.",
+)
+def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool):
+    r"""Query board-level personnel changes via XBRL.
 
-    Returns structured JSON with filing dates, descriptions, and attachment
-    URLs. Designed as a query tool — no files are downloaded.
+    Saves parsed JSON to the output directory and returns a summary.
 
     \b
     Examples:
-        knowledgelm resignations HDFCBANK --from 2023-01-01 --to 2025-01-26
-        knowledgelm resignations INFY --from 2020-01-01 --to 2025-12-31
+        knowledgelm personnel HDFCBANK --from 2023-01-01 --to 2025-01-26
     """
+    _query_xbrl(symbol, "personnel", from_date, to_date, output, output_json)
+
+
+@main.command("key-announcements")
+@click.argument("symbol")
+@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
+@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
+@click.option(
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    default=False,
+    help="Output results as JSON for agent parsing.",
+)
+def key_announcements(
+    symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool
+):
+    r"""Query key corporate announcements (Reg 30, fund raising, etc.) via XBRL."""
+    _query_xbrl(symbol, "key_announcements", from_date, to_date, output, output_json)
+
+
+@main.command("board-outcome")
+@click.argument("symbol")
+@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
+@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
+@click.option(
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    default=False,
+    help="Output results as JSON for agent parsing.",
+)
+def board_outcome(
+    symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool
+):
+    r"""Query board meeting outcomes via XBRL."""
+    _query_xbrl(symbol, "board_outcome", from_date, to_date, output, output_json)
+
+
+@main.command("shareholder-meetings")
+@click.argument("symbol")
+@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
+@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
+@click.option(
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    default=False,
+    help="Output results as JSON for agent parsing.",
+)
+def shareholder_meetings(
+    symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool
+):
+    r"""Query shareholder meeting announcements via XBRL."""
+    _query_xbrl(symbol, "shm", from_date, to_date, output, output_json)
+
+
+def _query_xbrl(
+    symbol: str, category: str, from_date: str, to_date: str, output: str, output_json: bool
+):
+    """Helper to run XBRL queries."""
     configure_logging()
 
     try:
         start = parse_date(from_date)
         end = parse_date(to_date)
     except click.BadParameter as e:
-        click.echo(json.dumps({"error": str(e), "success": False}))
+        if output_json:
+            click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
+    # Determine output directory (same logic as download)
+    folder_name = output if output else f"{symbol.upper()}_filings"
+    config = DOWNLOAD_CATEGORIES_CONFIG[category]
+    options = {cfg["enabled_arg"]: (c == category) for c, cfg in DOWNLOAD_CATEGORIES_CONFIG.items()}
+
     try:
-        from knowledgelm.data.nse_adapter import NSEAdapter
+        service = KnowledgeService(str(Path.cwd()))
+        announcements, counts = service.process_request(
+            symbol=symbol.upper(),
+            from_date=start,
+            to_date=end,
+            folder_name=folder_name,
+            options=options,
+        )
 
-        adapter = NSEAdapter(Path.cwd())
-
-        if not adapter.validate_symbol(symbol.upper()):
-            click.echo(
-                json.dumps({"error": f"Symbol '{symbol}' not found on NSE.", "success": False})
-            )
-            sys.exit(1)
-
-        announcements = adapter.get_announcements(symbol.upper(), start, end)
-
-        records = [
-            {
-                "date": item.get("an_dt", ""),
-                "description": item.get("attchmntText", "").strip(),
-                "filing_url": item.get("attchmntFile", ""),
-            }
-            for item in announcements
-            if str(item.get("desc", "")).strip().lower() in ["cessation", "resignation"]
-            and item.get("attchmntFile")
-        ]
+        label = config["label"]
+        count = counts.get(label, 0)
+        output_dir = Path.cwd() / folder_name
+        json_path = output_dir / f"{category}_details.json"
 
         result = {
             "success": True,
             "symbol": symbol.upper(),
+            "category": label,
             "date_range": {"from": from_date, "to": to_date},
-            "total": len(records),
-            "resignations": records,
+            "total": count,
+            "output_path": str(json_path.absolute()) if count > 0 else None,
         }
 
-        click.echo(json.dumps(result, indent=2))
+        if output_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            if count > 0:
+                logger.info(f"✓ Found {count} {label} record(s).")
+                logger.info(f"  Parsed details saved to: {result['output_path']}")
+            else:
+                logger.info(f"No {label} records found for the given date range.")
 
     except Exception as e:
-        logger.exception("Failed to query resignations")
-        click.echo(json.dumps({"error": str(e), "success": False}))
+        logger.exception(f"Failed to query {category}")
+        if output_json:
+            click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
 

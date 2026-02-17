@@ -1,7 +1,15 @@
 # Changelog
 
 ## [Unreleased]
-- No changes yet.
+
+### Added
+- Integrated XBRL harvester for granular announcement data.
+- New announcement categories: "Change in Personnel", "Key announcements", "Board Meeting Outcome", and "Shareholder Meetings".
+- Structured XBRL query support in CLI (`personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`).
+- Enhanced Streamlit UI with XBRL category selection and detailed views.
+
+### Changed
+- Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
 
 ## [5.0.0] - 2026-02-15
 
@@ -75,6 +83,12 @@
   - **Silent Progress Streams**: Redirected all background logs and progress messages to `knowledgelm.log` (overwritten on every run).
     - **Clean Stdout/Stderr**: Terminal streams are now reserved exclusively for final results and actionable exceptions, preventing "context pollution" for AI agents.
     - **High-Signal Error Handling**: Maintained explicit exception reporting on the terminal to ensure failure states are correctly interpreted by agents.
+### Architecture
+- **External APIs**:
+  - **NSE India**: Primary source for filenames and filing metadata (via `NSEAdapter`).
+  - **NSE XBRL API**: Source for granular, structured corporate announcements (via `NSEXBRLHarvester`).
+  - **Screener.in**: Fallback source for credit rating documents.
+  - **ValuePickr**: Source for forum thread data and discussions.
 
 ## [4.0.0] - 2026-02-08
 

@@ -16,6 +16,7 @@ A CLI and Streamlit web app for batch downloading NSE company announcements by c
 - View/download individual filings via Streamlit UI (Resignations, Reg 30 Updates, Press Releases)
 - Credit ratings: Primary source (screener.in, all-time) with NSE fallback (date-filtered)
 - **ValuePickr Export**: Download entire forum threads as clean PDFs for deep research
+- **XBRL Parsing**: Extract structured financial data directly from NSE filings (Reg 30, Board Outcomes) into JSON, bypassing PDF/XML parsing.
 - **NotebookLM Integration**: Skill includes workflow for adding downloads as notebook sources
 
 ## Agent-First Design Principles

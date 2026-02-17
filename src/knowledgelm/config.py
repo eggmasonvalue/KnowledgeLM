@@ -2,7 +2,6 @@
 
 # --- Folder Names ---
 RESIGNATIONS_FOLDER = "resignations"
-UPDATES_FOLDER = "updates"
 PRESS_RELEASES_FOLDER = "press_releases"
 CREDIT_RATING_FOLDER = "credit_rating"
 ANNUAL_REPORTS_FOLDER = "annual_reports"
@@ -22,7 +21,7 @@ FILE_EXTENSIONS = {"pdf": ".pdf", "html": ".html", "htm": ".htm"}
 DOWNLOAD_CATEGORIES_CONFIG = {
     "transcripts": {
         "enabled_arg": "download_transcripts",
-        "label": "transcript",
+        "label": "analyst call transcript",
     },
     "investor_presentations": {
         "enabled_arg": "download_investor_presentations",
@@ -47,6 +46,31 @@ DOWNLOAD_CATEGORIES_CONFIG = {
     "issue_documents": {
         "enabled_arg": "download_issue_documents",
         "label": "issue document",
+    },
+    # XBRL-based categories
+    "personnel": {
+        "enabled_arg": "download_personnel",
+        "label": "personnel change",
+        "is_xbrl": True,
+        "xbrl_cat": "Change in Personnel",
+    },
+    "key_announcements": {
+        "enabled_arg": "download_key_announcements",
+        "label": "key announcement",
+        "is_xbrl": True,
+        "xbrl_cat": "Key announcements",
+    },
+    "board_outcome": {
+        "enabled_arg": "download_board_outcome",
+        "label": "board meeting outcome",
+        "is_xbrl": True,
+        "xbrl_cat": "Board Meeting Outcome",
+    },
+    "shm": {
+        "enabled_arg": "download_shm",
+        "label": "shareholder meeting",
+        "is_xbrl": True,
+        "xbrl_cat": "Shareholder Meetings",
     },
 }
 

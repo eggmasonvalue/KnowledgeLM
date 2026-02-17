@@ -11,10 +11,11 @@ Batch download filings by category with configurable filters:
 
 ## [done] CLI Interface (v3.0)
 
-Full programmatic access via `knowledgelm` command:
-- **Download**: Batch download with automated folder creation.
-- **Discovery**: `--help` on all levels for self-documenting interface.
-- **JSON Output**: `--json` flag for machine readability and AI agent parsing.
+Full programmatic access via `knowledgelm`### cli.py
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`)
+- **Categories**: `issue_documents` added alongside existing download categories.
+- **XBRL Support**: Commands to query personnel, key announcements, board outcomes, and shareholder meetings via XBRL harvester.
+- **JSON Output**: `--json` flag for agent parsing.
 
 ## [done] ValuePickr Forum Export (v4.1)
 
@@ -45,12 +46,15 @@ Export entire ValuePickr (Discourse) threads for offline reading and AI analysis
 
 - **Symbol Check**: Validates company symbol against NSE using `equityQuote` before attempting downloads.
 
-## [done] Individual Filing Views
+## [done] Individual Filing Views (v5.1)
 
 Expandable tables with per-row downloads:
-- Resignations
-- Regulation 30 Updates (experimental)
-- Press Releases
+- Change in Personnel (via XBRL)
+- Key announcements (via XBRL)
+- Board Meeting Outcome (via XBRL)
+- Shareholder Meetings (via XBRL)
+- Press Releases (legacy filter)
+- Regulation 30 Updates (legacy filter)
 
 ## [done] Session State Management
 
@@ -58,7 +62,6 @@ Persist data across Streamlit reruns:
 - Fetched announcements
 - Category counts
 - Status messages
-
 - DataFrames for view tables
 
 ## [done] Modular Architecture
@@ -95,9 +98,19 @@ Download company share issue documents from NSE corporate filings:
 
 ## [done] Resignations Query CLI (v5.0)
 
-Standalone `knowledgelm resignations` command for querying board-level resignations:
-- **Query, not download**: Returns structured JSON with dates, descriptions, and filing URLs.
-- **Rationale**: Filing headers often suffice; count alone is an investment signal. Bulk PDF downloads are overkill for this category.
+Standalone `knowledgelm resignations` command for querying board-level resignations (Replaced by `personnel` in v5.1).
+
+---
+
+## [done] XBRL Harvester & Mapping (v5.1)
+
+Direct extraction of structured financial data from NSE XBRL filings without XML parsing:
+- **Source**: NSE Internal API (Corporate Filings).
+- **Format**: Clean JSON output with human-readable keys.
+- **Context-Aware Mapping**: Custom Node.js bundler (`generate_mappings.js`) that parses NSE's client-side rendering logic (`Ann-xbrl.js`) to reverse-engineer thousands of cryptic keys (e.g., `Rec60...` -> `Acquisition Details`).
+- **Collision Detection**: Build-time verification ensures no data loss during key mapping.
+- **Filtering**: Supports filtering by date range and specific event types (Reg30, Board Meetings, etc.).
+- **Agent-Ready**: Designed to feed structured event data directly to LLM agents for analysis.
 
 ---
 

@@ -11,6 +11,7 @@ from knowledgelm.config import (
     ISSUE_DOCS_CONFIG,
     ISSUE_DOCS_FOLDER,
 )
+from knowledgelm.core.xbrl_harvester import NSEXBRLHarvester, XBRL_CATEGORIES
 from knowledgelm.data.nse_adapter import NSEAdapter
 from knowledgelm.data.screener_adapter import download_credit_ratings_from_screener
 from knowledgelm.utils.file_utils import get_download_path
@@ -102,6 +103,14 @@ class KnowledgeService:
             if cat_key == "issue_documents":
                 issue_counts = self._process_issue_documents(symbol, nse_adapter, download_dir)
                 category_counts.update(issue_counts)
+                continue
+
+            # Special Case: XBRL Categories
+            if config.get("is_xbrl"):
+                count = self._process_xbrl_category(
+                    symbol, cat_key, config["xbrl_cat"], download_dir, from_date, to_date
+                )
+                category_counts[label] = count
                 continue
 
             # Standard Categories - apply filter and download matching items
@@ -263,24 +272,22 @@ class KnowledgeService:
                 continue
 
             # Filter for matching records
+            company_lower = company_name.strip().lower() if company_name else ""
             matching = []
-            if symbol_reliable:
-                # Match on symbol field directly
-                matching = [
-                    doc
-                    for doc in documents
-                    if str(doc.get("symbol", "")).strip().upper() == symbol.upper()
-                ]
-            else:
-                # Match on company name (primary method for offer docs & info memo)
-                if company_name:
-                    company_lower = company_name.strip().lower()
-                    matching = [
-                        doc
-                        for doc in documents
-                        if company_lower in str(doc.get("company", "")).strip().lower()
-                        or str(doc.get("company", "")).strip().lower() in company_lower
-                    ]
+            
+            for doc in documents:
+                doc_symbol = str(doc.get("symbol", "")).strip().upper()
+                doc_company = str(doc.get("company", "")).strip().lower()
+                
+                if symbol_reliable:
+                    if doc_symbol == symbol.upper():
+                        matching.append(doc)
+                elif company_lower:
+                    # Tightened matching: Ensure company name is a significant part of the record
+                    # or matches exactly to prevent "Bank of India" matching "State Bank of India"
+                    if company_lower == doc_company or \
+                       (len(company_lower) > 5 and company_lower in doc_company):
+                        matching.append(doc)
 
             if not matching:
                 logger.info(f"No {label} found for {symbol}")
@@ -295,7 +302,8 @@ class KnowledgeService:
             for doc in matching:
                 for field in attachment_fields:
                     url = str(doc.get(field, "") or "").strip()
-                    if not url or url == "-" or url == "null":
+                    # Robust check for invalid placeholders and trailing dashes
+                    if not url or url.lower() in ["-", "null", "nan"] or url.endswith("/-"):
                         continue
 
                     if adapter.download_and_extract(url, doc_folder):
@@ -305,3 +313,82 @@ class KnowledgeService:
             logger.info(f"Downloaded {count} {label} file(s) for {symbol}")
 
         return counts
+
+    def _process_xbrl_category(
+        self,
+        symbol: str,
+        cat_key: str,
+        xbrl_cat: str,
+        download_dir: Path,
+        from_date: datetime,
+        to_date: datetime,
+    ) -> int:
+        """Fetch XBRL data and save it as a JSON file in the category folder."""
+        records = self.get_xbrl_data(symbol, xbrl_cat, from_date, to_date)
+        if not records:
+            return 0
+
+        # Save to JSON
+        import json
+
+        output_file = download_dir / f"{cat_key}_details.json"
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2)
+
+        return len(records)
+
+    def get_xbrl_data(
+        self,
+        symbol: str,
+        category: str,
+        from_date: datetime,
+        to_date: datetime,
+    ) -> List[Dict[str, Any]]:
+        """Fetch and group XBRL data for a specific category.
+
+        Args:
+            symbol: Stock symbol.
+            category: One of the keys in XBRL_CATEGORIES.
+            from_date: Start date.
+            to_date: End date.
+
+        Returns:
+            List of flattened XBRL records for the requested category.
+        """
+        if category not in XBRL_CATEGORIES:
+            logger.warning(f"Unknown XBRL category: {category}")
+            return []
+
+        harvester = NSEXBRLHarvester()
+        types = XBRL_CATEGORIES[category]
+
+        # Convert datetime to dd-mm-yyyy for the harvester
+        start_str = from_date.strftime("%d-%m-%Y")
+        end_str = to_date.strftime("%d-%m-%Y")
+
+        raw_results = harvester.harvest_xbrl(
+            symbol=symbol,
+            types=types,
+            start_date=start_str,
+            end_date=end_str,
+        )
+
+        # Flatten the dictionary results into a single list
+        flattened = []
+        for type_code, records in raw_results.items():
+            for record in records:
+                # Add category info to each record
+                record["xbrl_category"] = category
+                record["xbrl_type_code"] = type_code
+                flattened.append(record)
+
+        # Sort by date descending if possible
+        try:
+            flattened.sort(
+                key=lambda x: datetime.strptime(x.get("an_dt", ""), "%d-%b-%Y %H:%M"),
+                reverse=True,
+            )
+        except Exception:
+            pass
+
+        return flattened
