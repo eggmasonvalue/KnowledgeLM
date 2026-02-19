@@ -19,6 +19,7 @@ from knowledgelm.config import (
     SCREENER_DOCS_SELECTOR,
     SCREENER_TIMEOUT,
 )
+from knowledgelm.utils.log_utils import redirect_output_to_logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -80,32 +81,33 @@ def _download_with_selenium(url: str, output_path: Path) -> bool:
         else:
             logger.debug("System ChromeDriver not found, relying on Selenium Manager")
 
-        service = Service(**service_args)
+        with redirect_output_to_logger(logger):
+            service = Service(**service_args)
 
-        if os.name == "nt":
-            service.creation_flags = subprocess.CREATE_NO_WINDOW
+            if os.name == "nt":
+                service.creation_flags = subprocess.CREATE_NO_WINDOW
 
-        driver = webdriver.Chrome(service=service, options=options)
+            driver = webdriver.Chrome(service=service, options=options)
 
-        logger.debug(f"Rendering {url} via Selenium...")
-        driver.get(url)
+            logger.debug(f"Rendering {url} via Selenium...")
+            driver.get(url)
 
-        # Wait for potential JS rendering (especially for charts/tables)
-        time.sleep(5)
+            # Wait for potential JS rendering (especially for charts/tables)
+            time.sleep(5)
 
-        # Print to PDF using Chrome DevTools Protocol
-        pdf_data = driver.execute_cdp_cmd(
-            "Page.printToPDF",
-            {
-                "printBackground": True,
-                "paperWidth": 8.27,  # A4
-                "paperHeight": 11.69,
-                "marginTop": 0.4,
-                "marginBottom": 0.4,
-                "marginLeft": 0.4,
-                "marginRight": 0.4,
-            },
-        )
+            # Print to PDF using Chrome DevTools Protocol
+            pdf_data = driver.execute_cdp_cmd(
+                "Page.printToPDF",
+                {
+                    "printBackground": True,
+                    "paperWidth": 8.27,  # A4
+                    "paperHeight": 11.69,
+                    "marginTop": 0.4,
+                    "marginBottom": 0.4,
+                    "marginLeft": 0.4,
+                    "marginRight": 0.4,
+                },
+            )
 
         if "data" in pdf_data:
             with open(output_path, "wb") as f:
@@ -119,7 +121,11 @@ def _download_with_selenium(url: str, output_path: Path) -> bool:
         return False
     finally:
         if driver:
-            driver.quit()
+            try:
+                with redirect_output_to_logger(logger):
+                    driver.quit()
+            except Exception:
+                pass
 
 
 def download_credit_ratings_from_screener(symbol: str, download_folder: Path) -> int:
@@ -138,9 +144,12 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
         The number of documents downloaded.
     """
     screener_url = SCREENER_BASE_URL.format(symbol=symbol)
+    logger.info(f"Fetching credit ratings from Screener for {symbol}...")
     try:
         # Security Fix: verify=True (default) set.
-        resp = requests.get(screener_url, timeout=SCREENER_TIMEOUT)
+        with redirect_output_to_logger(logger):
+            resp = requests.get(screener_url, timeout=SCREENER_TIMEOUT)
+
         if resp.status_code != 200:
             logger.warning(f"Screener.in returned {resp.status_code} for {symbol}")
             return 0
@@ -167,6 +176,8 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
         links = ul.find_all("a", href=True)
         if not links:
             return 0
+
+        logger.info(f"Found {len(links)} credit rating links.")
 
         dest_folder = download_folder / CREDIT_RATING_FOLDER
         dest_folder.mkdir(parents=True, exist_ok=True)
@@ -217,9 +228,10 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
 
                 # 2. Check content type (stream mode to avoid downloading big files yet)
                 try:
-                    resp = requests.get(
-                        target_url, stream=True, timeout=30, verify=False, headers=headers
-                    )
+                    with redirect_output_to_logger(logger):
+                        resp = requests.get(
+                            target_url, stream=True, timeout=30, verify=False, headers=headers
+                        )
                 except requests.SSLError:
                     logger.warning(f"SSL Error for {target_url}, skipping.")
                     continue
@@ -238,6 +250,8 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
                         continue
 
                     file_path = dest_folder / filename
+                    logger.info(f"Downloading PDF: {filename}")
+
                     with open(file_path, "wb") as f:
                         for chunk in resp.iter_content(chunk_size=8192):
                             f.write(chunk)
@@ -255,7 +269,7 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
                 file_path = dest_folder / filename
 
                 # Use Selenium
-                logger.debug(f"Converting HTML to PDF via Selenium: {target_url}")
+                logger.info(f"Converting HTML to PDF: {filename}")
                 if _download_with_selenium(target_url, file_path):
                     count += 1
                     downloaded_files.add(filename)

@@ -55,12 +55,15 @@ class KnowledgeService:
         Returns:
             Tuple of (announcements_list, category_counts_dict)
         """
+        logger.info(f"Starting processing request for {symbol} ({from_date.date()} - {to_date.date()})")
+
         # 1. Setup Folder
         # Assuming the service is initialized with a base path (like CWD),
         # get_download_path sanitizes and joins.
         try:
             download_dir = get_download_path(str(self.base_path), folder_name)
             download_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Output directory: {download_dir}")
         except ValueError as e:
             logger.error(f"Invalid folder name: {e}")
             raise
@@ -73,6 +76,7 @@ class KnowledgeService:
 
         # 2. Fetch Announcements
         announcements = nse_adapter.get_announcements(symbol, from_date, to_date)
+        logger.info(f"Fetched {len(announcements)} total announcements.")
 
         category_counts = {}
 
@@ -82,6 +86,7 @@ class KnowledgeService:
                 continue
 
             label = config["label"]
+            logger.info(f"Processing category: {label}")
 
             # Special Case: Annual Reports
             if cat_key == "annual_reports":
@@ -89,6 +94,7 @@ class KnowledgeService:
                     symbol, nse_adapter, download_dir, from_date, to_date, annual_reports_all_mode
                 )
                 category_counts[label] = count
+                logger.info(f"Completed {label}: {count} items.")
                 continue
 
             # Special Case: Credit Ratings
@@ -97,12 +103,14 @@ class KnowledgeService:
                     symbol, announcements, nse_adapter, download_dir
                 )
                 category_counts[label] = count
+                logger.info(f"Completed {label}: {count} items.")
                 continue
 
             # Special Case: Issue Documents
             if cat_key == "issue_documents":
                 issue_counts = self._process_issue_documents(symbol, nse_adapter, download_dir)
                 category_counts.update(issue_counts)
+                # logging handled inside _process_issue_documents per sub-type
                 continue
 
             # Special Case: XBRL Categories
@@ -111,6 +119,7 @@ class KnowledgeService:
                     symbol, cat_key, config["xbrl_cat"], download_dir, from_date, to_date
                 )
                 category_counts[label] = count
+                logger.info(f"Completed {label}: {count} items.")
                 continue
 
             # Standard Categories - apply filter and download matching items
@@ -126,7 +135,9 @@ class KnowledgeService:
                         if nse_adapter.download_document(url, cat_folder):
                             count += 1
             category_counts[label] = count
+            logger.info(f"Completed {label}: {count} items.")
 
+        logger.info(f"Processing request for {symbol} complete.")
         return announcements, category_counts
 
     def _matches_filter(self, category: str, item: Dict[str, Any]) -> bool:
@@ -167,6 +178,7 @@ class KnowledgeService:
         ar_folder.mkdir(parents=True, exist_ok=True)
         count = 0
 
+        logger.info("Fetching annual reports metadata...")
         ar_data = adapter.get_annual_reports(symbol)
         # ar_data is {year: [docs...]} or similar structure based on legacy code
 
@@ -194,6 +206,7 @@ class KnowledgeService:
                     if yr < from_date.year or yr > to_date.year:
                         continue
 
+                logger.info(f"Downloading Annual Report for {yr}...")
                 if adapter.download_document(url, ar_folder):
                     count += 1
         return count
@@ -209,6 +222,8 @@ class KnowledgeService:
         if primary_count > 0:
             return primary_count
 
+        logger.info("Screener returned 0 credit ratings. Trying NSE announcements fallback...")
+
         # 2. Fallback to NSE announcements
         count = 0
         downloaded_files = set(f.name for f in cat_folder.glob("*"))
@@ -222,6 +237,7 @@ class KnowledgeService:
                 if filename in downloaded_files:
                     continue
 
+                logger.info(f"Downloading credit rating from NSE: {filename}")
                 if adapter.download_document(url, cat_folder):
                     count += 1
                     downloaded_files.add(filename)
@@ -274,11 +290,11 @@ class KnowledgeService:
             # Filter for matching records
             company_lower = company_name.strip().lower() if company_name else ""
             matching = []
-            
+
             for doc in documents:
                 doc_symbol = str(doc.get("symbol", "")).strip().upper()
                 doc_company = str(doc.get("company", "")).strip().lower()
-                
+
                 if symbol_reliable:
                     if doc_symbol == symbol.upper():
                         matching.append(doc)

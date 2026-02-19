@@ -19,6 +19,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.print_page_options import PrintOptions
 
+from knowledgelm.utils.log_utils import redirect_output_to_logger
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,7 +76,8 @@ class ForumClient:
         url = f"{self.BASE_URL}/t/{slug}/{topic_id}.json"
         logger.info(f"Fetching topic metadata from {url}")
 
-        response = self.session.get(url)
+        with redirect_output_to_logger(logger):
+            response = self.session.get(url)
         response.raise_for_status()
         return response.json()
 
@@ -94,7 +97,8 @@ class ForumClient:
         params = [("post_ids[]", pid) for pid in post_ids]
 
         logger.debug(f"Fetching batch of {len(post_ids)} posts")
-        response = self.session.get(url, params=params)
+        with redirect_output_to_logger(logger):
+            response = self.session.get(url, params=params)
         response.raise_for_status()
 
         data = response.json()
@@ -110,6 +114,7 @@ class ForumClient:
             Dictionary with 'title', 'id', and list of 'posts'.
         """
         slug, topic_id = self.parse_topic_url(url)
+        logger.info(f"Starting download of thread: {url}")
 
         # 1. Fetch initial data to get the full stream of post IDs
         initial_data = self.fetch_topic_data(slug, topic_id)
@@ -307,19 +312,24 @@ class PDFGenerator:
             else:
                 logger.debug("System ChromeDriver not found, relying on Selenium Manager")
 
-            service = Service(**service_args)
-            if os.name == "nt":
-                service.creation_flags = subprocess.CREATE_NO_WINDOW
+            # Wrap selenium startup and execution
+            with redirect_output_to_logger(logger):
+                service = Service(**service_args)
+                if os.name == "nt":
+                    service.creation_flags = subprocess.CREATE_NO_WINDOW
 
-            driver = webdriver.Chrome(service=service, options=chrome_options)
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+
             logger.debug(f"Rendering {temp_html_path} via Selenium...")
-            driver.get(f"file:///{temp_html_path}")
 
-            # Use specific print options for A4
-            print_options = PrintOptions()
-            print_options.background = True
+            with redirect_output_to_logger(logger):
+                driver.get(f"file:///{temp_html_path}")
 
-            pdf_base64 = driver.print_page(print_options)
+                # Use specific print options for A4
+                print_options = PrintOptions()
+                print_options.background = True
+
+                pdf_base64 = driver.print_page(print_options)
 
             # Handle potential return types (string vs object)
             if hasattr(pdf_base64, "data"):
@@ -339,7 +349,12 @@ class PDFGenerator:
             raise
         finally:
             if driver:
-                driver.quit()
+                # Wrap quit as well just in case
+                try:
+                    with redirect_output_to_logger(logger):
+                        driver.quit()
+                except Exception:
+                    pass
             # Clean up temp file
             try:
                 os.unlink(temp_html_path)

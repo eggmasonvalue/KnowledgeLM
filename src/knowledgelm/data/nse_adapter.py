@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from nse import NSE
 
-from knowledgelm.utils.log_utils import redirect_stdout_to_logger
+from knowledgelm.utils.log_utils import redirect_output_to_logger
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +21,16 @@ class NSEAdapter:
         """
         self.download_folder = download_folder
         # Suppress initial print if any
-        with redirect_stdout_to_logger(logger):
+        with redirect_output_to_logger(logger):
             self.nse = NSE(str(download_folder))
 
     def get_announcements(
         self, symbol: str, from_date: datetime, to_date: datetime
     ) -> List[Dict[str, Any]]:
         """Fetch announcements from NSE."""
+        logger.info(f"Fetching announcements for {symbol} ({from_date.date()} to {to_date.date()})...")
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 return self.nse.announcements(symbol=symbol, from_date=from_date, to_date=to_date)
         except Exception as e:
             logger.error(f"Error fetching announcements for {symbol}: {e}")
@@ -37,8 +38,9 @@ class NSEAdapter:
 
     def get_annual_reports(self, symbol: str) -> Dict[str, Any]:
         """Fetch annual reports metadata."""
+        logger.info(f"Fetching annual reports for {symbol}...")
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 return self.nse.annual_reports(symbol)
         except Exception as e:
             logger.error(f"Error fetching annual reports for {symbol}: {e}")
@@ -50,8 +52,9 @@ class NSEAdapter:
         Note: The underlying library might not be secure or robust.
         Long term, we should replace this with our own requests call.
         """
+        logger.info(f"Downloading document: {url}")
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 self.nse.download_document(url, destination_folder)
             return True
         except Exception as e:
@@ -71,8 +74,9 @@ class NSEAdapter:
         Returns:
             True if download succeeded.
         """
+        logger.info(f"Downloading and extracting: {url}")
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 self.nse.download_document(url, destination_folder)
             return True
         except Exception as e:
@@ -93,8 +97,9 @@ class NSEAdapter:
             List of document records from the API.
         """
         url = f"{self.nse.base_url}{api_path}"
+        logger.info(f"Fetching issue documents from {api_path}...")
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 response = self.nse._req(url, params=params if params else None)
                 return response.json()
         except Exception as e:
@@ -114,7 +119,7 @@ class NSEAdapter:
             The full company name, or empty string if resolution fails.
         """
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 meta = self.nse.equityMetaInfo(symbol)
                 return meta.get("companyName", "")
         except Exception as e:
@@ -131,7 +136,7 @@ class NSEAdapter:
             True if the symbol exists/provides a quote, False otherwise.
         """
         try:
-            with redirect_stdout_to_logger(logger):
+            with redirect_output_to_logger(logger):
                 # equityQuote returns a dict for valid symbols
                 # and raises an exception (often KeyError 'priceInfo') for invalid ones
                 quote = self.nse.equityQuote(symbol)

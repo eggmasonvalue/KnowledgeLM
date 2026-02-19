@@ -20,22 +20,42 @@ class StreamToLogger:
 
     def write(self, buf: str) -> None:
         """Write buffer to logger, line by line."""
-        for line in buf.rstrip().splitlines():
-            self.logger.log(self.level, line.rstrip())
+        temp_linebuf = self.linebuf + buf
+        self.linebuf = ""
+        for line in temp_linebuf.splitlines(keepends=True):
+            if line.endswith('\n'):
+                self.logger.log(self.level, line.rstrip())
+            else:
+                self.linebuf += line
 
     def flush(self) -> None:
-        """Flush the stream (no-op for logger)."""
-        pass
+        """Flush the stream."""
+        if self.linebuf:
+            self.logger.log(self.level, self.linebuf.rstrip())
+            self.linebuf = ""
 
 
 @contextlib.contextmanager
-def redirect_stdout_to_logger(
+def redirect_output_to_logger(
     logger: logging.Logger, level: int = logging.INFO
 ) -> Generator[None, None, None]:
-    """Context manager to redirect stdout to a logger."""
+    """Context manager to redirect stdout and stderr to a logger."""
     original_stdout = sys.stdout
+    original_stderr = sys.stderr
+
     sys.stdout = StreamToLogger(logger, level)  # type: ignore
+    sys.stderr = StreamToLogger(logger, level)  # type: ignore
     try:
         yield
     finally:
+        # Flush any remaining buffer before restoring
+        if isinstance(sys.stdout, StreamToLogger):
+            sys.stdout.flush()
+        if isinstance(sys.stderr, StreamToLogger):
+            sys.stderr.flush()
+
         sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
+# Alias for backward compatibility
+redirect_stdout_to_logger = redirect_output_to_logger
