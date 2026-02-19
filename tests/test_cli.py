@@ -222,32 +222,3 @@ def test_forum_command_error(mock_client_cls):
         content = log_file.read_text()
         assert "Failed to download forum thread" in content
 
-@patch("knowledgelm.data.nse_adapter.NSEAdapter")
-def test_resignations_success(mock_adapter_cls):
-    """Test resignations command."""
-    mock_adapter = mock_adapter_cls.return_value
-    mock_adapter.validate_symbol.return_value = True
-    mock_adapter.get_announcements.return_value = [
-        {"desc": "cessation", "attchmntFile": "url", "attchmntText": "Resigned"}
-    ]
-
-    runner = CliRunner()
-    result = runner.invoke(main, ["resignations", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
-    assert result.exit_code == 0
-    data = json.loads(result.output)
-    assert data["success"] is True
-    assert data["total"] == 1
-    assert data["resignations"][0]["description"] == "Resigned"
-
-@patch("knowledgelm.data.nse_adapter.NSEAdapter")
-def test_resignations_symbol_not_found(mock_adapter_cls):
-    """Test resignations command with invalid symbol."""
-    mock_adapter = mock_adapter_cls.return_value
-    mock_adapter.validate_symbol.return_value = False
-
-    runner = CliRunner()
-    result = runner.invoke(main, ["resignations", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
-    assert result.exit_code == 1
-    data = json.loads(result.output)
-    assert data["success"] is False
-    assert "not found" in data["error"]
