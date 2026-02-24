@@ -13,6 +13,7 @@ dependencies = [
     "beautifulsoup4",
     "selenium>=4.40.0",
     "click>=8.1.0",
+    "arelle-release>=2.38.15",
 ]
 
 authors = [
