@@ -75,13 +75,23 @@ KnowledgeLM/
 │       └── utils/
 │           └── file_utils.py     # Sanitization & paths
 ├── tests/
-│   └── test_placeholder.py
+│   ├── conftest.py
+│   ├── test_cli.py
+│   ├── test_forum.py
+│   ├── test_nse_adapter.py
+│   ├── test_screener_adapter.py
+│   ├── test_service.py
+│   ├── test_utils.py
+│   └── test_xbrl_arelle.py
 ├── .agent/
 │   └── skills/
 │       └── knowledgelm-nse/      # Git Submodule (External Repo)
 │           └── SKILL.md          # Agent Skill (v3.0)
 ├── .context/
 ├── pyproject.toml                # uv config
+└── README.md
+```
+
 ## [done] CLI Interface (v3.0)
 
 Full programmatic access via `knowledgelm` command:
@@ -89,8 +99,6 @@ Full programmatic access via `knowledgelm` command:
 - **Discovery**: `--help` on all levels for self-documenting interface.
 - **JSON Output**: `--json` flag for machine readability and AI agent parsing.
 - **Help Discovery**: `--help` on all commands for agent self-discovery
-└── README.md
-```
 
 ## Component Responsibilities
 

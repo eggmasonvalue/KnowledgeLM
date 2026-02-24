@@ -11,6 +11,10 @@ KnowledgeLM/
 │       ├── core/
 │       ├── data/
 │       └── utils/
+├── tests/
+│   ├── conftest.py
+│   └── ... (test modules)
+├── .agent/
 ├── .context/
 └── pyproject.toml
 ```
@@ -72,5 +76,8 @@ if "data" not in st.session_state:
 
 ## Testing
 
-> [!CAUTION]
-> No automated tests exist. Manual testing via Streamlit UI.
+The project uses `pytest` for testing.
+
+- **Run Tests**: `uv run pytest`
+- **Coverage**: `uv run pytest --cov=src/knowledgelm --cov-report=term-missing`
+- **Mocking**: Tests use strict mocking of external dependencies (`nse`, `requests`, `selenium`, `arelle`) to ensure isolation and prevent network calls.
