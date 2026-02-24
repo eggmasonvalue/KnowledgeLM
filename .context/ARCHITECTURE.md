@@ -8,34 +8,34 @@ graph TD
         CLI[src/knowledgelm/cli.py<br/>Click CLI]
         APP[src/knowledgelm/app.py<br/>Streamlit UI]
     end
-    
+
     subgraph Logic["Core Logic"]
         SRV[src/knowledgelm/core/service.py]
         FORUM[src/knowledgelm/core/forum.py<br/>ValuePickr Export]
         XBRL[src/knowledgelm/core/xbrl_harvester.py<br/>XBRL Harvester]
+        TAX_MGR[src/knowledgelm/core/taxonomy_manager.py<br/>Taxonomy Manager]
     end
-    
+
     subgraph Data["Data Layer"]
         NSE_ADPT[src/knowledgelm/data/nse_adapter.py]
         SCR_ADPT[src/knowledgelm/data/screener_adapter.py]
-        XBRL_MAP[src/knowledgelm/xbrl_mapping_bundle/<br/>Mapping Logic & JSON]
     end
-    
+
     subgraph Agent["Agent Resources (External Repos)"]
         SKILL[.agent/skills/knowledgelm-nse/SKILL.md<br/>Submodule: eggmasonvalue/knowledgelm-nse]
     end
-    
+
     subgraph Utils["Utilities"]
         CONF[src/knowledgelm/config.py]
         F_UTIL[src/knowledgelm/utils/file_utils.py]
     end
-    
+
     subgraph External["External Sources"]
         NSE_LIB[NSE API<br/>nse library]
         SCR_WEB[screener.in<br/>Credit Ratings]
-        NLMPY[notebooklm-py<br/>Optional Integration]
+        ARELLE[Arelle<br/>XBRL Parsing]
     end
-    
+
     CLI --> SRV
     CLI --> FORUM
     CLI --> XBRL
@@ -43,11 +43,13 @@ graph TD
     SRV --> NSE_ADPT
     SRV --> SCR_ADPT
     SRV --> F_UTIL
-    XBRL --> XBRL_MAP
+    XBRL --> TAX_MGR
+    XBRL --> NSE_ADPT
+    TAX_MGR --> NSE_ADPT
     NSE_ADPT --> NSE_LIB
+    XBRL --> ARELLE
     SCR_ADPT --> SCR_WEB
     CLI .-> SKILL
-    SKILL .-> NLMPY
     APP ..-> CONF
     SRV ..-> CONF
 ```
@@ -65,14 +67,11 @@ KnowledgeLM/
 │       ├── core/
 │       │   ├── service.py        # Orchestration Logic
 │       │   ├── forum.py          # ValuePickr Logic
-│       │   └── xbrl_harvester.py # XBRL Parsing Logic
+│       │   ├── xbrl_harvester.py # XBRL Parsing Logic (Arelle Integration)
+│       │   └── taxonomy_manager.py # Taxonomy Caching & Mgmt
 │       ├── data/
 │       │   ├── nse_adapter.py    # NSE Library Wrapper
 │       │   └── screener_adapter.py # Screener Scraper
-│       ├── xbrl_mapping_bundle/  # XBRL Mapping Logic
-│       │   ├── generate_mappings.js
-│       │   ├── Ann-xbrl.js
-│       │   └── xbrl_labels.json
 │       └── utils/
 │           └── file_utils.py     # Sanitization & paths
 ├── tests/
@@ -116,7 +115,12 @@ Full programmatic access via `knowledgelm` command:
 
 ### core/xbrl_harvester.py
 - **`NSEXBRLHarvester`**: Fetches and parses XBRL filings from NSE.
-- **Mapping**: Applies context-aware label mappings to raw XBRL keys.
+- **Arelle Integration**: Uses `arelle` library to parse raw XML filings and resolve labels from taxonomies.
+- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) if taxonomy parsing fails (e.g., Reg30).
+
+### core/taxonomy_manager.py
+- **`TaxonomyManager`**: Handles downloading, extracting, and caching of XBRL taxonomy ZIPs.
+- **Caching**: Stores taxonomies in `.taxonomies/` to enable offline schema resolution by Arelle.
 
 ### XBRL Announcement Harvester
 
@@ -126,14 +130,11 @@ The `NSEXBRLHarvester` provides granular, field-level parsing of corporate annou
 - **Persistence**: Detailed parsed data is saved as `xbrl_details.json` within the symbol's filing folder.
 - **Client Access**: The CLI returns concise metadata (stat and local path) to prevent token bloat, while the UI displays the parsed data in interactive tables.
 
-### xbrl_mapping_bundle/
-- **`generate_mappings.js`**: Node.js script to extract mappings from NSE source.
-- **`xbrl_labels.json`**: Generated mapping file used by the python harvester.
-
 ### data/
 - **`nse_adapter.py`**: Wraps the external `nse` library.
   - **Validation**: Checks symbol validity via `equityQuote`.
-  - **Issue Documents**: Fetches 5 NSE corporate filing endpoints via `_req` and resolves company names via `equityMetaInfo`.
+  - **Issue Documents**: Fetches NSE corporate filing endpoints via `_req`.
+  - **Generic Fetching**: Exposes `fetch_json` and `download_raw` to support XBRL harvesting and taxonomy management.
 - **`screener_adapter.py`**: Handles scraping from Screener.in.
   - Resolves ICRA PDF links directly.
   - Uses Selenium for high-fidelity HTML-to-PDF conversion.
@@ -163,12 +164,13 @@ sequenceDiagram
     participant A as app.py
     participant S as Service
     participant N as NSEAdapter
-    participant SC as ScreenerAdapter
+    participant X as NSEXBRLHarvester
+    participant T as TaxonomyManager
 
     U->>A: Enter symbol, dates, folder name
     A->>S: process_request()
     S->>S: sanitize_folder_name()
-    
+
     S->>N: validate_symbol()
     alt Invalid Symbol
         N-->>S: False
@@ -177,17 +179,25 @@ sequenceDiagram
 
     S->>N: get_announcements()
     N-->>S: JSON data
-    
+
     par Download Categories
         loop Each Category
              S->>N: download_document()
         end
-        alt Credit Ratings
-             S->>SC: download_credit_ratings()
-             SC-->>S: Count
+        alt XBRL Parsing
+             S->>X: harvest_xbrl()
+             X->>T: get_taxonomy_dir()
+             T->>N: download_raw()
+             X->>N: download_document() (XML)
+             X->>X: parse_xbrl() (Arelle)
+             alt Parsing Fails
+                X->>X: _fallback_internal_api()
+                X->>N: fetch_json()
+             end
+             X-->>S: Parsed Data
         end
     end
-    
+
     S-->>A: data, counts
     A-->>U: Show status + updated tables
 ```

@@ -4,7 +4,7 @@
 
 Batch download filings by category with configurable filters:
 - Analyst Call Transcripts
-- Investor Presentations  
+- Investor Presentations
 - Credit Ratings (dual-source)
 - Related Party Transactions
 - Annual Reports (date range or all)
@@ -35,7 +35,7 @@ Export entire ValuePickr (Discourse) threads for offline reading and AI analysis
 - **NotebookLM Synergy**: Purpose-built `list-files --json` command to facilitate source injection.
 
 ## [done] Credit Rating Dual-Source
-    
+
 1. Primary: Scrape screener.in (all-time)
    - **ICRA**: Direct PDF link resolution (bypassing JS viewer).
    - **HTML Reports (CRISIL, etc.)**: Selenium-based HTML-to-PDF conversion.
@@ -102,15 +102,14 @@ Standalone `knowledgelm resignations` command for querying board-level resignati
 
 ---
 
-## [done] XBRL Harvester & Mapping (v5.1)
+## [done] XBRL Harvester Refactor (v5.1.1)
 
-Direct extraction of structured financial data from NSE XBRL filings without XML parsing:
-- **Source**: NSE Internal API (Corporate Filings).
-- **Format**: Clean JSON output with human-readable keys.
-- **Context-Aware Mapping**: Custom Node.js bundler (`generate_mappings.js`) that parses NSE's client-side rendering logic (`Ann-xbrl.js`) to reverse-engineer thousands of cryptic keys (e.g., `Rec60...` -> `Acquisition Details`).
-- **Collision Detection**: Build-time verification ensures no data loss during key mapping.
-- **Filtering**: Supports filtering by date range and specific event types (Reg30, Board Meetings, etc.).
-- **Agent-Ready**: Designed to feed structured event data directly to LLM agents for analysis.
+Overhaul of the XBRL processing pipeline to use native parsing:
+- **Arelle Integration**: Replaced legacy `xbrl_labels.json` mapping with the `arelle` library for parsing raw XBRL XML filings.
+- **Dynamic Mapping**: Labels are now resolved directly from official NSE taxonomy schemas, ensuring accuracy and handling updates automatically.
+- **Taxonomy Management**: New `TaxonomyManager` handles downloading, extracting (manual unzip for robustness), and caching of massive taxonomy ZIPs in `.taxonomies/`.
+- **Robust Fallback**: Implements a safety net for taxonomies with missing/broken schemas (e.g., Reg30). If Arelle parsing fails, the system automatically degrades to using NSE's internal API to fetch raw parsed data, ensuring availability.
+- **Dependency Reuse**: All network traffic is consolidated through `NSEAdapter` for consistent session handling.
 
 ---
 
@@ -118,5 +117,5 @@ Direct extraction of structured financial data from NSE XBRL filings without XML
 - [done] github web page for agent skills
 - **manage dependencies:** write github workflow - tests that check for breaking changes in external dependencies - nse scraper, screener scraper, icra, etc. as github actions daily to validate reports. or make .toml tighter with respect to external uncommon dependencies like nse since they might introduce breaking changes at any time.
 - naming needs to be better for the docs. it's still terribly random
-- **3P info skill/code:** TJI finance as knowledge base source - ask AI to figure out and visit the tijori finance website for the stock, go to the knowledge base, get all the links, send the VP link to the CLI and add the rest of the links directly. Maybe write a skill for this instead of CLI or code. write a skill for 3P filings and make them optional to add. nest the skill such that we can give various temperature levels - operator interviews to public sentiment analysis. offer events as a separate input to understand what's going on in the last few years. then we can take all the announcements instead of struggling for enforcement. 
+- **3P info skill/code:** TJI finance as knowledge base source - ask AI to figure out and visit the tijori finance website for the stock, go to the knowledge base, get all the links, send the VP link to the CLI and add the rest of the links directly. Maybe write a skill for this instead of CLI or code. write a skill for 3P filings and make them optional to add. nest the skill such that we can give various temperature levels - operator interviews to public sentiment analysis. offer events as a separate input to understand what's going on in the last few years. then we can take all the announcements instead of struggling for enforcement.
 - [done] npx for skills instead of AI instruction right now since anyone who will copy paste this instruction will have a terminal too.

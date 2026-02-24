@@ -50,20 +50,27 @@ XBRL_CATEGORIES = {
 class NSEXBRLHarvester:
     """Harvester for NSE XBRL filings via internal API and Arelle parser.
 
-    Leverages NSEAdapter for network interactions and Arelle for XBRL parsing.
+    This class orchestrates the retrieval and parsing of XBRL filings. It leverages
+    `NSEAdapter` for robust network interactions (mimicking browser behavior) and
+    `arelle` for parsing the raw XBRL XML files using official NSE taxonomies.
+
+    Attributes:
+        adapter (NSEAdapter): The adapter instance used for network requests.
+        taxonomy_manager (TaxonomyManager): Manager for handling taxonomy downloading and caching.
     """
 
     def __init__(self, nse_adapter: Optional[NSEAdapter] = None):
         """Initialize the harvester.
 
         Args:
-            nse_adapter: Existing NSEAdapter instance. If None, one will be created.
+            nse_adapter: An existing `NSEAdapter` instance. If `None`, a default instance
+                configured with a temporary directory will be created. In production, it is
+                recommended to inject a configured adapter.
         """
         if nse_adapter:
             self.adapter = nse_adapter
         else:
             # Default to a temp path if no adapter provided (fallback behavior)
-            # In production, adapter should be injected
             logger.warning("No NSEAdapter provided to Harvester. Creating default one.")
             self.adapter = NSEAdapter(Path(tempfile.gettempdir()))
 
@@ -77,16 +84,19 @@ class NSEXBRLHarvester:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Fetch announcement list for a symbol and type using NSEAdapter.
+        """Fetch a list of XBRL announcements for a symbol and type.
+
+        Uses the NSE internal API `/api/XBRL-announcements` to retrieve metadata about filings.
 
         Args:
-            symbol: NSE Symbol.
-            announcement_type: Type code.
-            start_date: DD-MM-YYYY start date.
-            end_date: DD-MM-YYYY end date.
+            symbol: The NSE stock symbol (e.g., 'TATAMOTORS').
+            announcement_type: The specific XBRL type code (e.g., 'Reg30').
+            start_date: Start date for filtering in 'dd-MM-yyyy' format.
+            end_date: End date for filtering in 'dd-MM-yyyy' format.
 
         Returns:
-            List of announcement dicts.
+            A list of dictionaries, where each dictionary represents an announcement
+            and contains metadata such as 'appId' and 'attachment'. Returns an empty list on failure.
         """
         url = f"{self.adapter.nse.base_url}/XBRL-announcements"
         params = {
@@ -105,22 +115,22 @@ class NSEXBRLHarvester:
             return result
         # Handle case where API returns error JSON or None
         if result:
-            # Sometimes API returns dict on error?
             logger.warning(f"Unexpected response format for {announcement_type}: {type(result)}")
         return []
 
     def _fallback_internal_api(self, app_id: str, announcement_type: str) -> Dict[str, Any]:
-        """Fetch parsed details from NSE's internal XBRL API (The "Cheat" method).
+        """Fetch parsed details from NSE's internal XBRL API.
 
-        Used when Arelle parsing fails due to missing schemas or taxonomy issues.
-        Returns the raw, unmapped JSON from NSE.
+        This method acts as a fallback when Arelle parsing fails (e.g., due to missing schemas
+        in the taxonomy package). It hits the NSE endpoint that returns pre-parsed JSON.
+        Note that the keys in this JSON are internal technical keys and not always human-readable.
 
         Args:
             app_id: The unique application ID of the filing.
             announcement_type: The filing type code.
 
         Returns:
-            Dictionary containing raw parsed data from NSE internal API.
+            A dictionary containing the raw parsed data from the NSE internal API, or an empty dict on failure.
         """
         logger.warning(f"Using fallback Internal API for {app_id} ({announcement_type})...")
         url = f"{self.adapter.nse.base_url}/XBRL-announcements"
@@ -132,13 +142,15 @@ class NSEXBRLHarvester:
         return {}
 
     def _find_schema_ref(self, xbrl_content: bytes) -> Optional[str]:
-        """Simple helper to extract schemaRef href from XBRL content.
+        """Extract the schemaRef href from XBRL content using regex.
+
+        Helper method to identify which XSD schema the XBRL instance refers to.
 
         Args:
             xbrl_content: Raw bytes content of the XBRL file.
 
         Returns:
-            The href string if found, else None.
+            The href string (e.g., 'in-capmkt-ent-2023-12-31.xsd') if found, else None.
         """
         try:
             content_str = xbrl_content.decode("utf-8", errors="ignore")
@@ -152,18 +164,23 @@ class NSEXBRLHarvester:
     def parse_xbrl(
         self, xbrl_url: str, announcement_type: str, app_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Download and parse XBRL using Arelle and cached taxonomies.
+        """Download and parse an XBRL filing using Arelle.
 
-        If parsing fails (e.g., due to missing schemas in the taxonomy package),
-        this method falls back to using the internal NSE API if `app_id` is provided.
+        Downloads the XBRL XML file and attempts to parse it using the cached taxonomy
+        for the given type. It handles complex relative path resolution by setting up
+        a temporary environment where the XML file acts as a sibling to the schema.
+
+        If parsing fails (e.g., due to missing schemas in the taxonomy), it attempts to
+        use the fallback internal API if `app_id` is provided.
 
         Args:
-            xbrl_url: URL to the XBRL XML filing.
-            announcement_type: The filing type code.
-            app_id: Optional App ID for fallback mechanism.
+            xbrl_url: URL to the raw XBRL XML filing.
+            announcement_type: The filing type code (e.g., 'fundRaising').
+            app_id: Optional App ID used for the fallback mechanism if parsing fails.
 
         Returns:
-            Dictionary of parsed facts (Label -> Value).
+            A dictionary of parsed facts, where keys are human-readable labels (if resolvable)
+            or QNames, and values are the fact values. Returns empty dict on total failure.
         """
         if not xbrl_url:
             if app_id:
@@ -250,11 +267,14 @@ class NSEXBRLHarvester:
                         logger.warning(f"Failed to setup taxonomy environment: {e}")
 
             # 4. Initialize Arelle Controller
+            # Use 'logToBuffer' to prevent Arelle from spamming stdout
             cntlr = Cntlr.Cntlr(logFileName="logToBuffer")
             cntlr.modelManager.validate = True
 
             model_xbrl = None
             try:
+                # Load the model
+                # This performs validation and schema loading
                 model_xbrl = cntlr.modelManager.load(str(final_xbrl_path))
             except Exception as e:
                 logger.error(f"Arelle failed to load XBRL: {e}")
@@ -265,6 +285,7 @@ class NSEXBRLHarvester:
                 return {}
 
             # Check for critical failures (None or no facts)
+            # 0 facts typically indicates schema loading failure where instance was invalid against empty schema
             if model_xbrl is None or len(model_xbrl.facts) == 0:
                 logger.warning(
                     f"Arelle loaded model with {0 if model_xbrl is None else len(model_xbrl.facts)} facts. Switching to fallback."
@@ -280,6 +301,7 @@ class NSEXBRLHarvester:
             for fact in model_xbrl.facts:
                 label = str(fact.qname)
 
+                # Attempt to get human-readable label
                 if fact.concept is not None:
                     lbl = fact.concept.label(lang="en")
                     if lbl:
@@ -309,16 +331,21 @@ class NSEXBRLHarvester:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> Dict[str, List[Dict[str, Any]]]:
-        """Harvest XBRL data for a symbol.
+        """Harvest and parse XBRL data for a given symbol.
+
+        Iterates through the requested announcement types, fetches filings within the date range,
+        and parses them into a structured format.
 
         Args:
-            symbol: NSE Symbol
-            types: Optional list of specific types to fetch (e.g., ['Reg30']). Defaults to all.
-            start_date: Start date 'dd-MM-yyyy'
-            end_date: End date 'dd-MM-yyyy'
+            symbol: The NSE stock symbol (e.g., 'RELIANCE').
+            types: Optional list of XBRL type codes to fetch (e.g., ['Reg30']).
+                   If None, fetches all supported types defined in `XBRL_TYPES`.
+            start_date: Start date for filtering in 'dd-MM-yyyy' format.
+            end_date: End date for filtering in 'dd-MM-yyyy' format.
 
         Returns:
-            Dictionary mapping type -> list of detailed filings
+            A dictionary where keys are the type codes (e.g., 'Reg30') and values are lists
+            of dictionaries, each representing a parsed filing with metadata and 'xbrl_data'.
         """
         results = {}
 
