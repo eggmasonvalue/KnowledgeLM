@@ -43,7 +43,7 @@ KnowledgeLM is built with **AI Agents** as its primary users. To ensure optimal 
 
 - Python 3.12+
 - click, streamlit, pandas, nse, requests
-- selenium, webdriver-manager (credit ratings)
+- selenium (credit ratings)
 - beautifulsoup4 (web scraping)
 
 ## How to Run
@@ -53,8 +53,8 @@ KnowledgeLM is built with **AI Agents** as its primary users. To ensure optimal 
 uv sync
 
 # CLI
-knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
+uv run knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
 
 # Web UI
-streamlit run src/knowledgelm/app.py
+uv run streamlit run src/knowledgelm/app.py
 ```

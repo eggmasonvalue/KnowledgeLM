@@ -8,13 +8,13 @@ A research companion for **NotebookLM** that automates the collection of NSE com
 
 ## 🚀 Instant Setup (AI Agents)
 
-Install the [knowledgelm-nse](https://github.com/eggmasonvalue/knowledgelm-nse) agent skill using 
+Install the [knowledgelm-nse](https://github.com/eggmasonvalue/knowledgelm-nse) agent skill using
 
 > `npx skills add eggmasonvalue/knowledgelm-nse`
 
 
 This skill allows your AI agent to batch download investor materials (transcripts, presentations, credit ratings, annual reports) for Indian publicly listed companies and integrate them into NotebookLM for deep fundamental analysis.
- 
+
 ---
 
 ## ✨ Features
@@ -38,7 +38,7 @@ sudo apt install chromium-driver  # Package names vary (e.g. chromium, chromium-
 
 **Requirement**: Ensure `chromedriver` is available in your `$PATH`. The tool will automatically detect and use it.
 
-## �️ Manual Installation & Usage
+## ️ Manual Installation & Usage
 
 If you prefer to use the tool directly from your terminal:
 
@@ -75,11 +75,10 @@ uv run streamlit run src/knowledgelm/app.py
 - **`.agent/`**: AI Agent resources, skills, and prompt templates.
 - **`.context/`**: Living documentation (Architecture, Design, Changelog).
 - **`src/`**: Core logic and Streamlit app.
+- **`tests/`**: Unit and integration tests.
 
 See [.context/ARCHITECTURE.md](.context/ARCHITECTURE.md) for detailed diagrams.
 
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
-
