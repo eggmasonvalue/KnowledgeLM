@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from nse import NSE
 
@@ -28,7 +28,9 @@ class NSEAdapter:
         self, symbol: str, from_date: datetime, to_date: datetime
     ) -> List[Dict[str, Any]]:
         """Fetch announcements from NSE."""
-        logger.info(f"Fetching announcements for {symbol} ({from_date.date()} to {to_date.date()})...")
+        logger.info(
+            f"Fetching announcements for {symbol} ({from_date.date()} to {to_date.date()})..."
+        )
         try:
             with redirect_output_to_logger(logger):
                 return self.nse.announcements(symbol=symbol, from_date=from_date, to_date=to_date)
@@ -105,6 +107,31 @@ class NSEAdapter:
         except Exception as e:
             logger.error(f"Error fetching issue documents from {api_path}: {e}")
             return []
+
+    def fetch_json(self, url: str, params: Optional[Dict[str, str]] = None) -> Any:
+        """Make a generic GET request to an NSE URL and return JSON.
+
+        Reuses the internal NSE session for consistent headers and cookies.
+
+        Args:
+            url: Full URL or path.
+            params: Query parameters.
+
+        Returns:
+            Parsed JSON content, or None on failure.
+        """
+        try:
+            with redirect_output_to_logger(logger):
+                response = self.nse._req(url, params=params)
+                # Check status code? _req usually returns response object
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.warning(f"fetch_json failed for {url}: {response.status_code}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error fetching JSON from {url}: {e}")
+            return None
 
     def get_company_name(self, symbol: str) -> str:
         """Resolve a stock symbol to its full company name.

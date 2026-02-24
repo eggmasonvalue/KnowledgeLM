@@ -1,12 +1,10 @@
-import io
 import logging
 import os
 import shutil
-import zipfile
 from pathlib import Path
 from typing import Optional
 
-import requests
+from knowledgelm.data.nse_adapter import NSEAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +25,19 @@ TAXONOMY_URL_MAP = {
 
 
 class TaxonomyManager:
-    """Manages downloading and caching of NSE XBRL Taxonomies."""
+    """Manages downloading and caching of NSE XBRL Taxonomies.
 
-    def __init__(self, cache_dir: Optional[Path] = None):
+    Uses NSEAdapter for robust downloading and caching.
+    """
+
+    def __init__(self, nse_adapter: NSEAdapter, cache_dir: Optional[Path] = None):
         """Initialize the taxonomy manager.
 
         Args:
+            nse_adapter: Instance of NSEAdapter to handle downloads.
             cache_dir: Directory to store cached taxonomies. Defaults to .taxonomies/ in project root.
         """
+        self.adapter = nse_adapter
         if cache_dir:
             self.cache_dir = Path(cache_dir)
         else:
@@ -47,15 +50,11 @@ class TaxonomyManager:
             except OSError as e:
                 logger.error(f"Failed to create cache directory {self.cache_dir}: {e}")
 
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-
     def get_taxonomy_dir(self, type_code: str) -> Optional[Path]:
         """Get the directory path for a specific taxonomy type.
 
         This method checks if the taxonomy is already cached. If not, it attempts to download
-        and extract it.
+        and extract it using the NSEAdapter.
 
         Args:
             type_code: The XBRL announcement type code (e.g., 'Reg30', 'fundRaising')
@@ -77,47 +76,48 @@ class TaxonomyManager:
         return self._download_and_extract(type_code, target_dir)
 
     def _download_and_extract(self, type_code: str, target_dir: Path) -> Optional[Path]:
-        """Download and extract the taxonomy zip file."""
+        """Download and extract the taxonomy zip file using NSEAdapter.
+
+        Args:
+            type_code: The taxonomy type key.
+            target_dir: The directory to extract content into.
+
+        Returns:
+            Path to target_dir if successful, else None.
+        """
         url = TAXONOMY_URL_MAP[type_code]
         logger.info(f"Downloading taxonomy for {type_code} from {url}...")
 
-        try:
-            response = requests.get(url, headers=self.headers, stream=True, timeout=60)
-            if response.status_code != 200:
-                logger.error(
-                    f"Failed to download taxonomy for {type_code}: Status {response.status_code}"
-                )
-                return None
+        # Create directory
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-            # Use BytesIO to handle zip in memory before extraction
-            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-                # Create directory only if download and zip load successful
-                if target_dir.exists():
-                    shutil.rmtree(target_dir)
-                target_dir.mkdir(parents=True, exist_ok=True)
+        # Use adapter to download and extract
+        # download_and_extract uses nse.download_document which extracts to folder
+        success = self.adapter.download_and_extract(url, target_dir)
 
-                logger.info(f"Extracting taxonomy for {type_code} to {target_dir}...")
-                zip_ref.extractall(target_dir)
-
-            # After extraction, we might want to flatten the structure if it's nested deep,
-            # but Arelle is generally good at finding things if we point to the right place.
-            # However, for robustness, checking for .xsd files is good.
+        if success:
             if not self._has_xsd(target_dir):
                 logger.warning(
                     f"Taxonomy for {type_code} extracted but NO .xsd files found. Arelle might struggle."
                 )
-
             return target_dir
-
-        except Exception as e:
-            logger.error(f"Error managing taxonomy for {type_code}: {e}")
-            # Clean up partial extraction
+        else:
+            logger.error(f"Failed to download taxonomy for {type_code}")
             if target_dir.exists():
                 shutil.rmtree(target_dir)
             return None
 
     def _has_xsd(self, path: Path) -> bool:
-        """Check recursively if directory contains any .xsd files."""
+        """Check recursively if directory contains any .xsd files.
+
+        Args:
+            path: Directory to search.
+
+        Returns:
+            True if at least one .xsd file is found.
+        """
         for root, dirs, files in os.walk(path):
             for f in files:
                 if f.endswith(".xsd"):

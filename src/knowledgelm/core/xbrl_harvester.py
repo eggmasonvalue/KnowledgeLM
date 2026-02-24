@@ -7,13 +7,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import requests
 from arelle import Cntlr
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from knowledgelm.core.taxonomy_manager import TaxonomyManager
-from knowledgelm.utils.log_utils import redirect_stdout_to_logger
+from knowledgelm.data.nse_adapter import NSEAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -51,40 +48,27 @@ XBRL_CATEGORIES = {
 
 
 class NSEXBRLHarvester:
-    """Harvester for NSE XBRL filings via internal API and Arelle parser."""
+    """Harvester for NSE XBRL filings via internal API and Arelle parser.
 
-    def __init__(self):
-        """Initialize the harvester."""
-        self.base_url = "https://www.nseindia.com/api"
-        # We need a session to hold cookies
-        self.session = requests.Session()
+    Leverages NSEAdapter for network interactions and Arelle for XBRL parsing.
+    """
 
-        # Configure retry strategy
-        retries = Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
-        )
-        self.session.mount("https://", HTTPAdapter(max_retries=retries))
+    def __init__(self, nse_adapter: Optional[NSEAdapter] = None):
+        """Initialize the harvester.
 
-        # Mimic a browser
-        self.session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "Accept": "*/*",
-                "Accept-Language": "en-US,en;q=0.9",
-            }
-        )
+        Args:
+            nse_adapter: Existing NSEAdapter instance. If None, one will be created.
+        """
+        if nse_adapter:
+            self.adapter = nse_adapter
+        else:
+            # Default to a temp path if no adapter provided (fallback behavior)
+            # In production, adapter should be injected
+            logger.warning("No NSEAdapter provided to Harvester. Creating default one.")
+            self.adapter = NSEAdapter(Path(tempfile.gettempdir()))
 
-        # Taxonomy Manager
-        self.taxonomy_manager = TaxonomyManager()
-
-        # Initial visit to set cookies
-        try:
-            with redirect_stdout_to_logger(logger):
-                self.session.get("https://www.nseindia.com", timeout=10)
-        except Exception as e:
-            logger.warning(f"Failed to initialize session cookies: {e}")
+        # Taxonomy Manager initialized with adapter
+        self.taxonomy_manager = TaxonomyManager(self.adapter)
 
     def get_announcements_by_type(
         self,
@@ -93,55 +77,69 @@ class NSEXBRLHarvester:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Fetch announcement list for a symbol and type."""
-        url = f"{self.base_url}/XBRL-announcements"
-        params = {"index": "equities", "symbol": symbol, "type": announcement_type}
+        """Fetch announcement list for a symbol and type using NSEAdapter.
+
+        Args:
+            symbol: NSE Symbol.
+            announcement_type: Type code.
+            start_date: DD-MM-YYYY start date.
+            end_date: DD-MM-YYYY end date.
+
+        Returns:
+            List of announcement dicts.
+        """
+        url = f"{self.adapter.nse.base_url}/XBRL-announcements"
+        params = {
+            "index": "equities",
+            "symbol": symbol,
+            "type": announcement_type,
+        }
 
         if start_date:
             params["from_date"] = start_date
         if end_date:
             params["to_date"] = end_date
 
-        try:
-            with redirect_stdout_to_logger(logger):
-                response = self.session.get(url, params=params, timeout=10)
-
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 401:
-                logger.info("Session expired, refreshing cookies...")
-                with redirect_stdout_to_logger(logger):
-                    self.session.get("https://www.nseindia.com", timeout=10)
-                    response = self.session.get(url, params=params, timeout=10)
-                if response.status_code == 200:
-                    return response.json()
-
-            logger.error(f"Error fetching list for {announcement_type}: {response.status_code}")
-            return []
-        except Exception as e:
-            logger.error(f"Exception fetching list: {e}")
-            return []
+        result = self.adapter.fetch_json(url, params)
+        if result and isinstance(result, list):
+            return result
+        # Handle case where API returns error JSON or None
+        if result:
+            # Sometimes API returns dict on error?
+            logger.warning(f"Unexpected response format for {announcement_type}: {type(result)}")
+        return []
 
     def _fallback_internal_api(self, app_id: str, announcement_type: str) -> Dict[str, Any]:
-        """Fetch parsed details from NSE's internal XBRL API (The "Cheat" method)."""
+        """Fetch parsed details from NSE's internal XBRL API (The "Cheat" method).
+
+        Used when Arelle parsing fails due to missing schemas or taxonomy issues.
+        Returns the raw, unmapped JSON from NSE.
+
+        Args:
+            app_id: The unique application ID of the filing.
+            announcement_type: The filing type code.
+
+        Returns:
+            Dictionary containing raw parsed data from NSE internal API.
+        """
         logger.warning(f"Using fallback Internal API for {app_id} ({announcement_type})...")
-        url = f"{self.base_url}/XBRL-announcements"
+        url = f"{self.adapter.nse.base_url}/XBRL-announcements"
         params = {"type": announcement_type, "appId": app_id}
 
-        try:
-            with redirect_stdout_to_logger(logger):
-                response = self.session.get(url, params=params, timeout=10)
-            if response.status_code == 200:
-                # Returns unmapped JSON directly
-                return response.json()
-            logger.error(f"Fallback API failed for {app_id}: {response.status_code}")
-            return {}
-        except Exception as e:
-            logger.error(f"Exception in fallback API: {e}")
-            return {}
+        result = self.adapter.fetch_json(url, params)
+        if result:
+            return result
+        return {}
 
     def _find_schema_ref(self, xbrl_content: bytes) -> Optional[str]:
-        """Simple helper to extract schemaRef href from XBRL content."""
+        """Simple helper to extract schemaRef href from XBRL content.
+
+        Args:
+            xbrl_content: Raw bytes content of the XBRL file.
+
+        Returns:
+            The href string if found, else None.
+        """
         try:
             content_str = xbrl_content.decode("utf-8", errors="ignore")
             match = re.search(r'schemaRef[^>]*href=["\']([^"\']+)["\']', content_str)
@@ -154,7 +152,19 @@ class NSEXBRLHarvester:
     def parse_xbrl(
         self, xbrl_url: str, announcement_type: str, app_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Download and parse XBRL using Arelle and cached taxonomies."""
+        """Download and parse XBRL using Arelle and cached taxonomies.
+
+        If parsing fails (e.g., due to missing schemas in the taxonomy package),
+        this method falls back to using the internal NSE API if `app_id` is provided.
+
+        Args:
+            xbrl_url: URL to the XBRL XML filing.
+            announcement_type: The filing type code.
+            app_id: Optional App ID for fallback mechanism.
+
+        Returns:
+            Dictionary of parsed facts (Label -> Value).
+        """
         if not xbrl_url:
             if app_id:
                 return self._fallback_internal_api(app_id, announcement_type)
@@ -169,34 +179,50 @@ class NSEXBRLHarvester:
 
         with tempfile.TemporaryDirectory() as temp_dir_str:
             temp_dir = Path(temp_dir_str)
-
-            # 1. Download XBRL XML
+            final_xbrl_path = temp_dir / "filing.xml"
             xbrl_content = b""
+
+            # 1. Download XBRL XML using Adapter
             try:
-                response = self.session.get(xbrl_url, stream=True, timeout=30)
-                if response.status_code != 200:
-                    logger.error(f"Failed to download XBRL: {response.status_code}")
+                # Download to temp dir
+                if not self.adapter.download_document(xbrl_url, temp_dir):
+                    logger.error(f"Adapter failed to download XBRL: {xbrl_url}")
                     if app_id:
                         return self._fallback_internal_api(app_id, announcement_type)
                     return {}
-                xbrl_content = response.content
+
+                # Find the file (name might vary)
+                downloaded_files = list(temp_dir.glob("*.xml"))
+                if not downloaded_files:
+                    logger.error("Downloaded file not found or not XML")
+                    if app_id:
+                        return self._fallback_internal_api(app_id, announcement_type)
+                    return {}
+
+                # Use the first XML file found
+                actual_file_path = downloaded_files[0]
+
+                # Read content for schema detection
+                with open(actual_file_path, "rb") as f:
+                    xbrl_content = f.read()
+
+                # Rename to standard name for consistency logic below
+                shutil.move(actual_file_path, final_xbrl_path)
+
             except Exception as e:
-                logger.error(f"Error downloading XBRL: {e}")
+                logger.error(f"Error downloading/processing XBRL: {e}")
                 if app_id:
                     return self._fallback_internal_api(app_id, announcement_type)
                 return {}
 
             # 2. Find schemaRef inside the XBRL
             schema_ref = self._find_schema_ref(xbrl_content)
-            final_xbrl_path = temp_dir / "filing.xml"
-
-            with open(final_xbrl_path, "wb") as f:
-                f.write(xbrl_content)
 
             # 3. Setup Taxonomy Environment
+            # We copy the cached taxonomy into the temp dir to allow Arelle to resolve relative paths
             if taxonomy_dir and taxonomy_dir.exists() and schema_ref:
-                # Find where schema is located
                 found_schema_dir = None
+                # Search for the specific schema file in the cached taxonomy
                 for root, dirs, files in os.walk(taxonomy_dir):
                     if schema_ref in files:
                         found_schema_dir = Path(root)
@@ -204,10 +230,10 @@ class NSEXBRLHarvester:
 
                 if found_schema_dir:
                     try:
-                        # Copy taxonomy to temp to maintain relative paths
+                        # Copy entire taxonomy structure to temp
                         shutil.copytree(taxonomy_dir, temp_dir / "taxonomy", dirs_exist_ok=True)
 
-                        # Find schema in temp copy
+                        # Find schema in the temp copy
                         temp_schema_dir = None
                         for root, dirs, files in os.walk(temp_dir / "taxonomy"):
                             if schema_ref in files:
@@ -216,6 +242,7 @@ class NSEXBRLHarvester:
 
                         if temp_schema_dir:
                             # Move XML file to be a sibling of the schema
+                            # This fixes relative path resolution for XSDs
                             new_xbrl_path = temp_schema_dir / "filing.xml"
                             shutil.move(final_xbrl_path, new_xbrl_path)
                             final_xbrl_path = new_xbrl_path
@@ -259,7 +286,8 @@ class NSEXBRLHarvester:
                         label = lbl
                     else:
                         lbl = fact.concept.label(
-                            lang="en", labelrole="http://www.xbrl.org/2003/role/verboseLabel"
+                            lang="en",
+                            labelrole="http://www.xbrl.org/2003/role/verboseLabel",
                         )
                         if lbl:
                             label = lbl
@@ -281,7 +309,17 @@ class NSEXBRLHarvester:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> Dict[str, List[Dict[str, Any]]]:
-        """Harvest XBRL data for a symbol."""
+        """Harvest XBRL data for a symbol.
+
+        Args:
+            symbol: NSE Symbol
+            types: Optional list of specific types to fetch (e.g., ['Reg30']). Defaults to all.
+            start_date: Start date 'dd-MM-yyyy'
+            end_date: End date 'dd-MM-yyyy'
+
+        Returns:
+            Dictionary mapping type -> list of detailed filings
+        """
         results = {}
 
         target_types = XBRL_TYPES
@@ -309,11 +347,9 @@ class NSEXBRLHarvester:
 
                 parsed_data = {}
                 try:
-                    # Pass app_id so fallback can be triggered internally if Arelle fails
                     parsed_data = self.parse_xbrl(xbrl_url, type_code, app_id=app_id)
                 except Exception as e:
                     logger.error(f"Failed to parse XBRL for {xbrl_url}: {e}")
-                    # Last ditch effort
                     if app_id and not parsed_data:
                         parsed_data = self._fallback_internal_api(app_id, type_code)
 
