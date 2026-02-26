@@ -35,20 +35,21 @@ class TaxonomyManager:
 
         Args:
             nse_adapter: Instance of NSEAdapter to handle downloads.
-            cache_dir: Directory to store cached taxonomies. Defaults to .taxonomies/ in project root.
+            cache_dir: Directory to store cached taxonomies.
+                Defaults to .taxonomies/ in project root.
         """
         self.adapter = nse_adapter
         if cache_dir:
             self.cache_dir = Path(cache_dir)
         else:
             # Default to .taxonomies in project root
-            self.cache_dir = Path(os.getcwd()) / ".taxonomies"
+            self.cache_dir = Path.cwd() / ".taxonomies"
 
-        if not self.cache_dir.exists():
-            try:
+        try:
+            if not self.cache_dir.exists():
                 self.cache_dir.mkdir(parents=True, exist_ok=True)
-            except OSError as e:
-                logger.error(f"Failed to create cache directory {self.cache_dir}: {e}")
+        except OSError as e:
+            logger.error(f"Failed to create cache directory {self.cache_dir}: {e}")
 
     def get_taxonomy_dir(self, type_code: str) -> Optional[Path]:
         """Get the directory path for a specific taxonomy type.
@@ -85,8 +86,19 @@ class TaxonomyManager:
         Returns:
             Path to target_dir if successful, else None.
         """
+        if type_code not in TAXONOMY_URL_MAP:
+            return None
+
         url = TAXONOMY_URL_MAP[type_code]
         logger.info(f"Downloading taxonomy for {type_code} from {url}...")
+
+        # Ensure parent cache dir exists (in case it was deleted externally during runtime)
+        if not self.cache_dir.exists():
+            try:
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as e:
+                logger.error(f"Failed to recreate cache directory {self.cache_dir}: {e}")
+                return None
 
         # Create directory
         if target_dir.exists():
@@ -100,7 +112,8 @@ class TaxonomyManager:
         if success:
             if not self._has_xsd(target_dir):
                 logger.warning(
-                    f"Taxonomy for {type_code} extracted but NO .xsd files found. Arelle might struggle."
+                    f"Taxonomy for {type_code} extracted but NO .xsd files found. "
+                    "Arelle might struggle."
                 )
             return target_dir
         else:
