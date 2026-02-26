@@ -1,7 +1,7 @@
 """Core service logic for KnowledgeLM."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -11,7 +11,7 @@ from knowledgelm.config import (
     ISSUE_DOCS_CONFIG,
     ISSUE_DOCS_FOLDER,
 )
-from knowledgelm.core.xbrl_harvester import NSEXBRLHarvester, XBRL_CATEGORIES
+from knowledgelm.core.xbrl_harvester import XBRL_CATEGORIES, NSEXBRLHarvester
 from knowledgelm.data.nse_adapter import NSEAdapter
 from knowledgelm.data.screener_adapter import download_credit_ratings_from_screener
 from knowledgelm.utils.file_utils import get_download_path
@@ -55,7 +55,9 @@ class KnowledgeService:
         Returns:
             Tuple of (announcements_list, category_counts_dict)
         """
-        logger.info(f"Starting processing request for {symbol} ({from_date.date()} - {to_date.date()})")
+        logger.info(
+            f"Starting processing request for {symbol} ({from_date.date()} - {to_date.date()})"
+        )
 
         # 1. Setup Folder
         # Assuming the service is initialized with a base path (like CWD),
@@ -116,7 +118,13 @@ class KnowledgeService:
             # Special Case: XBRL Categories
             if config.get("is_xbrl"):
                 count = self._process_xbrl_category(
-                    symbol, cat_key, config["xbrl_cat"], download_dir, from_date, to_date
+                    symbol,
+                    cat_key,
+                    config["xbrl_cat"],
+                    download_dir,
+                    from_date,
+                    to_date,
+                    nse_adapter,
                 )
                 category_counts[label] = count
                 logger.info(f"Completed {label}: {count} items.")
@@ -338,11 +346,16 @@ class KnowledgeService:
         download_dir: Path,
         from_date: datetime,
         to_date: datetime,
+        adapter: NSEAdapter,
     ) -> int:
         """Fetch XBRL data and save it as a JSON file in the category folder."""
         records = self.get_xbrl_data(symbol, xbrl_cat, from_date, to_date)
         if not records:
             return 0
+
+        # Special processing for Shareholder Meetings (SHM) to extract resolutions
+        if cat_key == "shm":
+            self._enrich_shm_records(records, symbol, adapter, download_dir)
 
         # Save to JSON
         import json
@@ -352,6 +365,160 @@ class KnowledgeService:
             json.dump(records, f, indent=2)
 
         return len(records)
+
+    def _enrich_shm_records(
+        self, records: List[Dict], symbol: str, adapter: NSEAdapter, download_dir: Path
+    ):
+        """Enrich SHM records with resolution details from PDF notices."""
+        from knowledgelm.core.pdf_parser import PDFResolutionExtractor
+
+        extractor = PDFResolutionExtractor()
+
+        # We need general announcements to find the PDF.
+        # Since we have a list of records, we can determine the date range needed.
+        if not records:
+            return
+
+        try:
+            dates = []
+            for r in records:
+                dt_str = r.get("broadcastDateTime")
+                if dt_str:
+                    try:
+                        dt = datetime.strptime(dt_str, "%d-%b-%Y %H:%M:%S")
+                        dates.append(dt)
+                    except ValueError:
+                        pass
+
+            if not dates:
+                return
+
+            min_date = min(dates)
+            max_date = max(dates)
+
+            # Pad by a few days to find matching general announcements
+            search_start = min_date - timedelta(days=5)
+            search_end = max_date + timedelta(days=5)
+
+            logger.info(
+                f"Fetching general announcements for SHM PDF matching "
+                f"({search_start.date()} to {search_end.date()})..."
+            )
+            # Use a fresh fetch to ensure we have the data
+            general_anns = adapter.get_announcements(symbol, search_start, search_end)
+
+        except Exception as e:
+            logger.error(f"Failed to fetch general announcements for enrichment: {e}")
+            return
+
+        for record in records:
+            # Check if it's a Notice
+            sub_ann = record.get("subOfAnn", "")
+            if "Notice" not in sub_ann:
+                continue
+
+            logger.info(f"Processing SHM Notice: {sub_ann}")
+
+            # Find matching PDF
+            xbrl_dt_str = record.get("broadcastDateTime")
+            if not xbrl_dt_str:
+                continue
+
+            try:
+                xbrl_dt = datetime.strptime(xbrl_dt_str, "%d-%b-%Y %H:%M:%S")
+            except ValueError:
+                continue
+
+            target_pdf_url = None
+
+            # Look for match in general_anns
+            candidates = []
+            for g_ann in general_anns:
+                g_dt_str = g_ann.get("an_dt", "")
+                if not g_dt_str:
+                    continue
+                try:
+                    g_dt = datetime.strptime(g_dt_str, "%d-%b-%Y %H:%M:%S")
+                except ValueError:
+                    continue
+
+                # Date Match: +/- 2 days
+                diff = abs((g_dt - xbrl_dt).days)
+                if diff <= 2:
+                    candidates.append(g_ann)
+
+            # Filter candidates to find the best PDF match
+            best_candidate = None
+
+            for cand in candidates:
+                url = cand.get("attchmntFile", "")
+                if not url or not url.lower().endswith(".pdf"):
+                    continue
+
+                desc = cand.get("desc", "").lower()
+                text = cand.get("attchmntText", "").lower()
+
+                # Exclusions
+                if "advertisement" in desc or "newspaper" in desc:
+                    continue
+
+                # Scoring
+                score = 0
+                if "notice" in desc:
+                    score += 2
+                if "notice" in text:
+                    score += 1
+                if "shareholder" in desc:
+                    score += 1
+                if "postal ballot" in text:
+                    score += 3
+
+                # Check for "Ad" in filename as a negative signal (e.g. PostalBallotAd.pdf)
+                if "ad.pdf" in url.lower() or "_ad" in url.lower():
+                    score -= 5
+
+                if score > 0:
+                    # If we don't have a candidate yet, or this one is better
+                    if best_candidate is None or score > best_candidate[0]:
+                        best_candidate = (score, url)
+
+            if best_candidate:
+                target_pdf_url = best_candidate[1]
+                logger.info(f"Found matching PDF: {target_pdf_url}")
+
+                # Download to shm folder instead of temp
+                shm_dir = download_dir / "shm_notices"
+                shm_dir.mkdir(parents=True, exist_ok=True)
+
+                if adapter.download_document(target_pdf_url, shm_dir):
+                    # Find the downloaded file (name might be different or same)
+                    filename = target_pdf_url.split("/")[-1]
+                    pdf_path = shm_dir / filename
+
+                    if pdf_path.exists():
+                        try:
+                            resolutions, raw_text = extractor.extract_resolutions(pdf_path)
+
+                            # Save raw text
+                            txt_path = pdf_path.with_suffix(".txt")
+                            with open(txt_path, "w", encoding="utf-8") as f:
+                                f.write(raw_text)
+
+                            record["resolutions"] = resolutions
+                            record["pdf_url"] = target_pdf_url
+                            record["local_pdf_path"] = str(pdf_path.absolute())
+                            record["local_text_path"] = str(txt_path.absolute())
+                            record["note"] = (
+                                "Resolutions were automatically extracted. "
+                                "Please refer to the local PDF or text file for verification."
+                            )
+                            logger.info(f"Extracted {len(resolutions)} resolutions.")
+                        except Exception as e:
+                            logger.error(f"Failed to extract resolutions: {e}")
+                    else:
+                        logger.error("Downloaded PDF not found.")
+            else:
+                logger.warning(f"No matching PDF found for SHM Notice dated {xbrl_dt}")
 
     def get_xbrl_data(
         self,
