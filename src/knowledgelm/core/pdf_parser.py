@@ -3,7 +3,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pdfplumber
 
@@ -13,21 +13,21 @@ logger = logging.getLogger(__name__)
 class PDFResolutionExtractor:
     """Extracts resolutions and explanatory statements from PDF notices."""
 
-    def extract_resolutions(self, pdf_path: Path) -> List[Dict[str, str]]:
+    def extract_resolutions(self, pdf_path: Path) -> Tuple[List[Dict[str, str]], str]:
         """Extract resolutions from a PDF file.
 
         Args:
             pdf_path: Path to the PDF file.
 
         Returns:
-            List of dictionaries containing resolution details.
-            Each dict has keys: 'item_no', 'description',
-            'resolution_type', 'explanatory_statement'.
+            Tuple containing:
+            1. List of dictionaries with resolution details.
+            2. The full extracted raw text from the PDF.
         """
         text = self._extract_text(pdf_path)
         if not text:
             logger.warning(f"No text extracted from PDF: {pdf_path}")
-            return []
+            return [], ""
 
         # Split into Notice and Explanatory Statement sections
         # Common headers: "EXPLANATORY STATEMENT", "STATEMENT PURSUANT TO SECTION 102"
@@ -128,7 +128,7 @@ class PDFResolutionExtractor:
                 }
             )
 
-        return merged
+        return merged, text
 
     def _extract_text(self, pdf_path: Path) -> str:
         """Extract text from PDF using pdfplumber."""

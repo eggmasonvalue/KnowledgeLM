@@ -1,7 +1,6 @@
 """Core service logic for KnowledgeLM."""
 
 import logging
-import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -356,7 +355,7 @@ class KnowledgeService:
 
         # Special processing for Shareholder Meetings (SHM) to extract resolutions
         if cat_key == "shm":
-            self._enrich_shm_records(records, symbol, adapter)
+            self._enrich_shm_records(records, symbol, adapter, download_dir)
 
         # Save to JSON
         import json
@@ -367,7 +366,9 @@ class KnowledgeService:
 
         return len(records)
 
-    def _enrich_shm_records(self, records: List[Dict], symbol: str, adapter: NSEAdapter):
+    def _enrich_shm_records(
+        self, records: List[Dict], symbol: str, adapter: NSEAdapter, download_dir: Path
+    ):
         """Enrich SHM records with resolution details from PDF notices."""
         from knowledgelm.core.pdf_parser import PDFResolutionExtractor
 
@@ -485,23 +486,37 @@ class KnowledgeService:
                 target_pdf_url = best_candidate[1]
                 logger.info(f"Found matching PDF: {target_pdf_url}")
 
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    temp_path = Path(temp_dir)
-                    if adapter.download_document(target_pdf_url, temp_path):
-                        # Find the downloaded file (name might be different or same)
-                        filename = target_pdf_url.split("/")[-1]
-                        pdf_path = temp_path / filename
+                # Download to shm folder instead of temp
+                shm_dir = download_dir / "shm_notices"
+                shm_dir.mkdir(parents=True, exist_ok=True)
 
-                        if pdf_path.exists():
-                            try:
-                                resolutions = extractor.extract_resolutions(pdf_path)
-                                record["resolutions"] = resolutions
-                                record["pdf_url"] = target_pdf_url
-                                logger.info(f"Extracted {len(resolutions)} resolutions.")
-                            except Exception as e:
-                                logger.error(f"Failed to extract resolutions: {e}")
-                        else:
-                            logger.error("Downloaded PDF not found.")
+                if adapter.download_document(target_pdf_url, shm_dir):
+                    # Find the downloaded file (name might be different or same)
+                    filename = target_pdf_url.split("/")[-1]
+                    pdf_path = shm_dir / filename
+
+                    if pdf_path.exists():
+                        try:
+                            resolutions, raw_text = extractor.extract_resolutions(pdf_path)
+
+                            # Save raw text
+                            txt_path = pdf_path.with_suffix(".txt")
+                            with open(txt_path, "w", encoding="utf-8") as f:
+                                f.write(raw_text)
+
+                            record["resolutions"] = resolutions
+                            record["pdf_url"] = target_pdf_url
+                            record["local_pdf_path"] = str(pdf_path.absolute())
+                            record["local_text_path"] = str(txt_path.absolute())
+                            record["note"] = (
+                                "Resolutions were automatically extracted. "
+                                "Please refer to the local PDF or text file for verification."
+                            )
+                            logger.info(f"Extracted {len(resolutions)} resolutions.")
+                        except Exception as e:
+                            logger.error(f"Failed to extract resolutions: {e}")
+                    else:
+                        logger.error("Downloaded PDF not found.")
             else:
                 logger.warning(f"No matching PDF found for SHM Notice dated {xbrl_dt}")
 
