@@ -13,8 +13,8 @@ dependencies = [
     "beautifulsoup4",
     "selenium>=4.40.0",
     "click>=8.1.0",
-    "arelle-release>=2.38.15",
-    "pdfplumber>=0.11.9",
+    "nse-xbrl-parser",
+    "markitdown>=0.1.5",
 ]
 
 authors = [
@@ -77,6 +77,9 @@ convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+nse-xbrl-parser = { git = "https://github.com/eggmasonvalue/nse-xbrl-parser.git" }
 
 [dependency-groups]
 dev = [

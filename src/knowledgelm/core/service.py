@@ -32,6 +32,8 @@ class KnowledgeService:
                 However, for this app structure, the UI passes the specific folder name.
         """
         self.base_path = Path(base_download_path)
+        # Initialize an NSEAdapter that uses the base_path as its working directory
+        self.nse_adapter = NSEAdapter(self.base_path)
 
     def process_request(
         self,
@@ -56,7 +58,7 @@ class KnowledgeService:
             Tuple of (announcements_list, category_counts_dict)
         """
         logger.info(
-            f"Starting processing request for {symbol} ({from_date.date()} - {to_date.date()})"
+            f"Starting processing request for {symbol} ({from_date} - {to_date})"
         )
 
         # 1. Setup Folder
@@ -76,9 +78,15 @@ class KnowledgeService:
         if not nse_adapter.validate_symbol(symbol):
             raise ValueError(f"Symbol '{symbol}' is invalid or not found on NSE.")
 
-        # 2. Fetch Announcements
-        announcements = nse_adapter.get_announcements(symbol, from_date, to_date)
-        logger.info(f"Fetched {len(announcements)} total announcements.")
+        # 2. Lazy Fetch Announcements
+        _cached_announcements = None
+
+        def get_general_announcements() -> List[Dict[str, Any]]:
+            nonlocal _cached_announcements
+            if _cached_announcements is None:
+                _cached_announcements = nse_adapter.get_announcements(symbol, from_date, to_date)
+                logger.info(f"Fetched {len(_cached_announcements)} total announcements.")
+            return _cached_announcements
 
         category_counts = {}
 
@@ -102,7 +110,7 @@ class KnowledgeService:
             # Special Case: Credit Ratings
             if cat_key == "credit_rating":
                 count = self._process_credit_ratings(
-                    symbol, announcements, nse_adapter, download_dir
+                    symbol, get_general_announcements, nse_adapter, download_dir
                 )
                 category_counts[label] = count
                 logger.info(f"Completed {label}: {count} items.")
@@ -136,7 +144,7 @@ class KnowledgeService:
             cat_folder.mkdir(parents=True, exist_ok=True)
 
             count = 0
-            for item in announcements:
+            for item in get_general_announcements():
                 if self._matches_filter(cat_key, item):
                     url = item.get("attchmntFile")
                     if url:
@@ -146,7 +154,7 @@ class KnowledgeService:
             logger.info(f"Completed {label}: {count} items.")
 
         logger.info(f"Processing request for {symbol} complete.")
-        return announcements, category_counts
+        return _cached_announcements or [], category_counts
 
     def _matches_filter(self, category: str, item: Dict[str, Any]) -> bool:
         """Check if an item matches the category filter."""
@@ -220,36 +228,51 @@ class KnowledgeService:
         return count
 
     def _process_credit_ratings(
-        self, symbol: str, announcements: List[Dict[str, Any]], adapter: NSEAdapter, root_dir: Path
+        self, symbol: str, get_announcements_func: callable, adapter: NSEAdapter, root_dir: Path
     ) -> int:
-        # 1. Try Screener (Primary)
+        """Fetch and download credit ratings from Screener.in.
+
+        Screener.in is used as the sole source for credit ratings as it provides
+        high-fidelity PDF conversion and historical records.
+
+        Args:
+            symbol: Stock symbol.
+            get_announcements_func: Callable to get general announcements (unused, kept for signature compatibility).
+            adapter: Initialized NSEAdapter.
+            root_dir: Root download directory.
+
+        Returns:
+            Number of documents downloaded.
+        """
+        # 1. Try Screener (Sole Source)
         cat_folder = root_dir / "credit_rating"  # Matches config constant value
         cat_folder.mkdir(parents=True, exist_ok=True)
 
         primary_count = download_credit_ratings_from_screener(symbol, root_dir)
-        if primary_count > 0:
-            return primary_count
+        return primary_count
 
-        logger.info("Screener returned 0 credit ratings. Trying NSE announcements fallback...")
+        # NOTE: NSE announcements fallback has been disabled as per user request.
+        # Screener.in is now the sole source for credit ratings.
+        # logger.info("Screener returned 0 credit ratings. Trying NSE announcements fallback...")
 
-        # 2. Fallback to NSE announcements
-        count = 0
-        downloaded_files = set(f.name for f in cat_folder.glob("*"))
+        # # 2. Fallback to NSE announcements
+        # count = 0
+        # downloaded_files = set(f.name for f in cat_folder.glob("*"))
 
-        for item in announcements:
-            if self._matches_filter("credit_rating", item):
-                url = item.get("attchmntFile")
-                if not url:
-                    continue
-                filename = url.split("/")[-1]
-                if filename in downloaded_files:
-                    continue
+        # for item in get_announcements_func():
+        #     if self._matches_filter("credit_rating", item):
+        #         url = item.get("attchmntFile")
+        #         if not url:
+        #             continue
+        #         filename = url.split("/")[-1]
+        #         if filename in downloaded_files:
+        #             continue
 
-                logger.info(f"Downloading credit rating from NSE: {filename}")
-                if adapter.download_document(url, cat_folder):
-                    count += 1
-                    downloaded_files.add(filename)
-        return count
+        #         logger.info(f"Downloading credit rating from NSE: {filename}")
+        #         if adapter.download_document(url, cat_folder):
+        #             count += 1
+        #             downloaded_files.add(filename)
+        # return count
 
     def _process_issue_documents(
         self,
@@ -357,10 +380,24 @@ class KnowledgeService:
         if cat_key == "shm":
             self._enrich_shm_records(records, symbol, adapter, download_dir)
 
+        # Filter output fields based on configuration
+        output_keys = DOWNLOAD_CATEGORIES_CONFIG.get(cat_key, {}).get("output_keys")
+        if output_keys:
+            records = [{k: r[k] for k in output_keys if k in r} for r in records]
+
         # Save to JSON
         import json
 
-        output_file = download_dir / f"{cat_key}_details.json"
+        if cat_key == "personnel":
+            output_file = download_dir / "personnel_changes.json"
+        elif cat_key == "key_announcements":
+            output_file = download_dir / "key_announcements.json"
+        elif cat_key == "shm":
+            shm_dir = download_dir / "shareholder_meetings"
+            shm_dir.mkdir(parents=True, exist_ok=True)
+            output_file = shm_dir / "shm_details.json"
+        else:
+            output_file = download_dir / f"{cat_key}_details.json"
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(records, f, indent=2)
 
@@ -370,9 +407,6 @@ class KnowledgeService:
         self, records: List[Dict], symbol: str, adapter: NSEAdapter, download_dir: Path
     ):
         """Enrich SHM records with resolution details from PDF notices."""
-        from knowledgelm.core.pdf_parser import PDFResolutionExtractor
-
-        extractor = PDFResolutionExtractor()
 
         # We need general announcements to find the PDF.
         # Since we have a list of records, we can determine the date range needed.
@@ -402,7 +436,7 @@ class KnowledgeService:
 
             logger.info(
                 f"Fetching general announcements for SHM PDF matching "
-                f"({search_start.date()} to {search_end.date()})..."
+                f"({search_start} to {search_end})..."
             )
             # Use a fresh fetch to ensure we have the data
             general_anns = adapter.get_announcements(symbol, search_start, search_end)
@@ -487,7 +521,7 @@ class KnowledgeService:
                 logger.info(f"Found matching PDF: {target_pdf_url}")
 
                 # Download to shm folder instead of temp
-                shm_dir = download_dir / "shm_notices"
+                shm_dir = download_dir / "shareholder_meetings" / "shm_notices"
                 shm_dir.mkdir(parents=True, exist_ok=True)
 
                 if adapter.download_document(target_pdf_url, shm_dir):
@@ -497,24 +531,26 @@ class KnowledgeService:
 
                     if pdf_path.exists():
                         try:
-                            resolutions, raw_text = extractor.extract_resolutions(pdf_path)
+                            # Convert to markdown
+                            md_path = pdf_path.with_suffix(".md")
+                            try:
+                                from markitdown import MarkItDown
+                                markitdown = MarkItDown()
+                                result = markitdown.convert(str(pdf_path))
+                                with open(md_path, "w", encoding="utf-8") as f:
+                                    f.write(result.text_content)
+                                record["local_markdown_path"] = str(md_path.absolute())
+                            except Exception as e:
+                                logger.error(f"Failed to convert PDF to Markdown: {e}")
 
-                            # Save raw text
-                            txt_path = pdf_path.with_suffix(".txt")
-                            with open(txt_path, "w", encoding="utf-8") as f:
-                                f.write(raw_text)
-
-                            record["resolutions"] = resolutions
                             record["pdf_url"] = target_pdf_url
                             record["local_pdf_path"] = str(pdf_path.absolute())
-                            record["local_text_path"] = str(txt_path.absolute())
                             record["note"] = (
-                                "Resolutions were automatically extracted. "
-                                "Please refer to the local PDF or text file for verification."
+                                "Please refer to the local PDF or markdown file for verification."
                             )
-                            logger.info(f"Extracted {len(resolutions)} resolutions.")
+                            logger.info("Successfully processed PDF to markdown.")
                         except Exception as e:
-                            logger.error(f"Failed to extract resolutions: {e}")
+                            logger.error(f"Failed to process PDF: {e}")
                     else:
                         logger.error("Downloaded PDF not found.")
             else:
@@ -542,7 +578,7 @@ class KnowledgeService:
             logger.warning(f"Unknown XBRL category: {category}")
             return []
 
-        harvester = NSEXBRLHarvester()
+        harvester = NSEXBRLHarvester(nse_adapter=self.nse_adapter)
         types = XBRL_CATEGORIES[category]
 
         # Convert datetime to dd-mm-yyyy for the harvester

@@ -13,7 +13,6 @@ graph TD
         SRV[src/knowledgelm/core/service.py]
         FORUM[src/knowledgelm/core/forum.py<br/>ValuePickr Export]
         XBRL[src/knowledgelm/core/xbrl_harvester.py<br/>XBRL Harvester]
-        TAX_MGR[src/knowledgelm/core/taxonomy_manager.py<br/>Taxonomy Manager]
     end
 
     subgraph Data["Data Layer"]
@@ -33,7 +32,7 @@ graph TD
     subgraph External["External Sources"]
         NSE_LIB[NSE API<br/>nse library]
         SCR_WEB[screener.in<br/>Credit Ratings]
-        ARELLE[Arelle<br/>XBRL Parsing]
+        NSE_XBRL_PARSER[nse-xbrl-parser<br/>External Engine]
     end
 
     CLI --> SRV
@@ -43,11 +42,9 @@ graph TD
     SRV --> NSE_ADPT
     SRV --> SCR_ADPT
     SRV --> F_UTIL
-    XBRL --> TAX_MGR
     XBRL --> NSE_ADPT
-    TAX_MGR --> NSE_ADPT
     NSE_ADPT --> NSE_LIB
-    XBRL --> ARELLE
+    XBRL --> NSE_XBRL_PARSER
     SCR_ADPT --> SCR_WEB
     CLI .-> SKILL
     APP ..-> CONF
@@ -67,8 +64,7 @@ KnowledgeLM/
 │       ├── core/
 │       │   ├── service.py        # Orchestration Logic
 │       │   ├── forum.py          # ValuePickr Logic
-│       │   ├── xbrl_harvester.py # XBRL Parsing Logic (Arelle Integration)
-│       │   └── taxonomy_manager.py # Taxonomy Caching & Mgmt
+│       │   └── xbrl_harvester.py # XBRL Orchestration (via nse-xbrl-parser)
 │       ├── data/
 │       │   ├── nse_adapter.py    # NSE Library Wrapper
 │       │   └── screener_adapter.py # Screener Scraper
@@ -103,8 +99,8 @@ Full programmatic access via `knowledgelm` command:
 ## Component Responsibilities
 
 ### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`)
-- **XBRL Support**: Commands to query personnel, key announcements, board outcomes, and shareholder meetings via XBRL harvester.
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`)
+- **XBRL Support**: Commands to query personnel, key announcements, <!-- board outcomes, --> and shareholder meetings via XBRL harvester.
 - **JSON Output**: `--json` flag for agent parsing
 - **Help Discovery**: `--help` on all commands for agent self-discovery
 
@@ -123,16 +119,12 @@ Full programmatic access via `knowledgelm` command:
 
 ### core/xbrl_harvester.py
 - **`NSEXBRLHarvester`**: Fetches and parses XBRL filings from NSE.
-- **Arelle Integration**: Uses `arelle` library to parse raw XML filings and resolve labels from taxonomies.
-- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) if taxonomy parsing fails (e.g., Reg30).
-
-### core/taxonomy_manager.py
-- **`TaxonomyManager`**: Handles downloading, extracting, and caching of XBRL taxonomy ZIPs.
-- **Caching**: Stores taxonomies in `.taxonomies/` to enable offline schema resolution by Arelle.
+- **External Parsing Engine**: Delegates the heavy lifting of taxonomy resolution and absolute path rewriting to the `nse-xbrl-parser` package to limit execution time and complexity in the KnowledgeLM core base.
+- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) with prominent logging if parser fails.
 
 ### XBRL Announcement Harvester
 
-The `NSEXBRLHarvester` provides granular, field-level parsing of corporate announcements (e.g., personnel changes, board outcomes).
+The `NSEXBRLHarvester` provides granular, field-level parsing of corporate announcements (e.g., personnel changes). <!-- , board outcomes). -->
 
 - **Standardized Flow**: XBRL categories are integrated into the main `process_request` flow.
 - **Persistence**: Detailed parsed data is saved as `xbrl_details.json` within the symbol's filing folder.
@@ -141,8 +133,9 @@ The `NSEXBRLHarvester` provides granular, field-level parsing of corporate annou
 ### data/
 - **`nse_adapter.py`**: Wraps the external `nse` library.
   - **Validation**: Checks symbol validity via `equityQuote`.
+  - **Consolidated Download**: `download_and_extract` provides a unified, robust mechanism for both direct file downloads and recursive ZIP extraction.
   - **Issue Documents**: Fetches NSE corporate filing endpoints via `_req`.
-  - **Generic Fetching**: Exposes `fetch_json` and `download_raw` to support XBRL harvesting and taxonomy management.
+  - **Generic Fetching**: Exposes `fetch_json` to support XBRL harvesting and taxonomy management.
 - **`screener_adapter.py`**: Handles scraping from Screener.in.
   - Resolves ICRA PDF links directly.
   - Uses Selenium for high-fidelity HTML-to-PDF conversion.
@@ -194,10 +187,8 @@ sequenceDiagram
         end
         alt XBRL Parsing
              S->>X: harvest_xbrl()
-             X->>T: get_taxonomy_dir()
-             T->>N: download_raw()
              X->>N: download_document() (XML)
-             X->>X: parse_xbrl() (Arelle)
+             X->>X: parse_xbrl() via nse-xbrl-parser
              alt Parsing Fails
                 X->>X: _fallback_internal_api()
                 X->>N: fetch_json()
@@ -213,20 +204,21 @@ sequenceDiagram
 ## Output Structure
 
 ```
-{symbol}_filings/
+{symbol}_sources/
 ├── transcripts/
 ├── investor_presentations/
 ├── credit_rating/
 ├── related_party_txns/
 ├── annual_reports/
-├── personnel_details.json         (Parsed XBRL data)
-├── key_announcements_details.json (Parsed XBRL data)
-├── board_outcome_details.json     (Parsed XBRL data)
-├── shm_details.json               (Parsed XBRL data)
-└── press_releases/    (Optional: Logical grouping in UI)
-
-{symbol}_valuepickr/
-├── {slug}_valuepickr_forum.pdf
-└── {slug}_ValuePickr_references.md
+├── personnel_changes.json         (Parsed XBRL data)
+├── key_announcements.json         (Parsed XBRL data)
+├── share_issuance_docs/
+├── shareholder_meetings/
+│     ├── shm_notices/
+│     └── shm_details.json         (Parsed XBRL data)
+├── press_releases/
+└── forum_valuepickr/
+      ├── forum_thread.pdf
+      └── forum_links.md
 
 ```

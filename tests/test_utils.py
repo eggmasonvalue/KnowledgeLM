@@ -1,6 +1,9 @@
-import pytest
 from pathlib import Path
-from knowledgelm.utils.file_utils import sanitize_folder_name, get_download_path
+
+import pytest
+
+from knowledgelm.utils.file_utils import get_download_path, sanitize_folder_name
+
 
 def test_sanitize_folder_name_valid():
     """Test sanitization with valid folder names."""

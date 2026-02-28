@@ -21,9 +21,10 @@ This skill allows your AI agent to batch download investor materials (transcript
 
 - **Agent-First**: Optimized for LLMs with standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution (primary output is JSON) to preserve the context window.
 - **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
+- **Granular XBRL Parsing**: Extracts fine-grained facts (Personnel Changes, Board Outcomes, Shareholder Meetings) into clean JSON using our standalone, highly optimized `nse-xbrl-parser` offline resolution engine.
 - **Issue Documents**: IPO prospectus, rights offers, QIP placements, information memoranda, and scheme documents — unified across 5 NSE endpoints with inconsistent schemas, unreliable metadata, and mixed archive formats so you don't have to be.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.
-- **Credit Rating Dual-Source**: Primary extraction from Screener.in (high-fidelity PDF conversion) with NSE API fallback.
+- **Credit Rating Extraction**: High-fidelity extraction and PDF conversion of credit ratings from Screener.in.
 - **ValuePickr Forum Export**: Export entire forum threads to clean, research-ready PDFs with reference extraction.
 - **Interactive UI**: Browse and download individual filings (Resignations, Press Releases, etc.) via Streamlit.
 
@@ -45,8 +46,16 @@ If you prefer to use the tool directly from your terminal:
 ### CLI Usage
 
 ```bash
-# Install (requires uv)
+# Install from PyPI (Standard usage)
 uv tool install knowledgelm
+
+# Alternatively, for development or installing from source code (.zip/clone):
+unzip knowledgelm-main.zip
+cd knowledgelm-main
+uv tool install .
+
+# To run the development version directly without installing:
+uv run knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
 
 # Download filings
 knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26

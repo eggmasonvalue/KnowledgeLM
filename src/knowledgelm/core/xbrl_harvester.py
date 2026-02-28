@@ -1,15 +1,11 @@
 import logging
-import os
-import re
-import shutil
 import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from arelle import Cntlr
+from nse_xbrl_parser import parse_xbrl_file
 
-from knowledgelm.core.taxonomy_manager import TaxonomyManager
 from knowledgelm.data.nse_adapter import NSEAdapter
 
 logger = logging.getLogger(__name__)
@@ -18,7 +14,7 @@ logger = logging.getLogger(__name__)
 XBRL_TYPES = {
     "Reg30": "Restructuring (Reg 30)",
     "announcements": "Change in Personnel",
-    "outcome": "Board Meeting Outcomes",
+    # "outcome": "Board Meeting Outcomes",
     "fundRaising": "Issuance of Securities",
     "agr": "Agreements/Contracts",
     "award": "Orders & Contracts",
@@ -42,7 +38,7 @@ XBRL_CATEGORIES = {
         "CIRP",
         "annOts",
     ],
-    "Board Meeting Outcome": ["outcome"],
+    # "Board Meeting Outcome": ["outcome"],
     "Shareholder Meetings": ["shm"],
 }
 
@@ -56,26 +52,15 @@ class NSEXBRLHarvester:
 
     Attributes:
         adapter (NSEAdapter): The adapter instance used for network requests.
-        taxonomy_manager (TaxonomyManager): Manager for handling taxonomy downloading and caching.
     """
 
     def __init__(self, nse_adapter: Optional[NSEAdapter] = None):
-        """Initialize the harvester.
-
-        Args:
-            nse_adapter: An existing `NSEAdapter` instance. If `None`, a default instance
-                configured with a temporary directory will be created. In production, it is
-                recommended to inject a configured adapter.
-        """
         if nse_adapter:
             self.adapter = nse_adapter
         else:
             # Default to a temp path if no adapter provided (fallback behavior)
             logger.warning("No NSEAdapter provided to Harvester. Creating default one.")
             self.adapter = NSEAdapter(Path(tempfile.gettempdir()))
-
-        # Taxonomy Manager initialized with adapter
-        self.taxonomy_manager = TaxonomyManager(self.adapter)
 
     def get_announcements_by_type(
         self,
@@ -119,47 +104,18 @@ class NSEXBRLHarvester:
         return []
 
     def _fallback_internal_api(self, app_id: str, announcement_type: str) -> Dict[str, Any]:
-        """Fetch parsed details from NSE's internal XBRL API.
-
-        This method acts as a fallback when Arelle parsing fails (e.g., due to missing schemas
-        in the taxonomy package). It hits the NSE endpoint that returns pre-parsed JSON.
-        Note that the keys in this JSON are internal technical keys and not always human-readable.
-
-        Args:
-            app_id: The unique application ID of the filing.
-            announcement_type: The filing type code.
-
-        Returns:
-            A dictionary containing the raw parsed data from the NSE internal API, or an empty dict on failure.
-        """
-        logger.warning(f"Using fallback Internal API for {app_id} ({announcement_type})...")
+        """Fetch parsed details from NSE's internal XBRL API."""
+        logger.warning(f"!!! SWITCHING TO INTERNAL API FALLBACK for {app_id} ({announcement_type}) !!!")
         url = f"{self.adapter.nse.base_url}/XBRL-announcements"
         params = {"type": announcement_type, "appId": app_id}
 
         result = self.adapter.fetch_json(url, params)
         if result:
+            logger.info(f"Fallback successful for {app_id}.")
             return result
+        logger.error(f"Fallback failed for {app_id}.")
         return {}
 
-    def _find_schema_ref(self, xbrl_content: bytes) -> Optional[str]:
-        """Extract the schemaRef href from XBRL content using regex.
-
-        Helper method to identify which XSD schema the XBRL instance refers to.
-
-        Args:
-            xbrl_content: Raw bytes content of the XBRL file.
-
-        Returns:
-            The href string (e.g., 'in-capmkt-ent-2023-12-31.xsd') if found, else None.
-        """
-        try:
-            content_str = xbrl_content.decode("utf-8", errors="ignore")
-            match = re.search(r'schemaRef[^>]*href=["\']([^"\']+)["\']', content_str)
-            if match:
-                return match.group(1)
-        except Exception:
-            pass
-        return None
 
     def parse_xbrl(
         self, xbrl_url: str, announcement_type: str, app_id: Optional[str] = None
@@ -187,142 +143,56 @@ class NSEXBRLHarvester:
                 return self._fallback_internal_api(app_id, announcement_type)
             return {}
 
-        taxonomy_dir = self.taxonomy_manager.get_taxonomy_dir(announcement_type)
-        if not taxonomy_dir:
-            logger.warning(f"Could not get taxonomy for {announcement_type}. Attempting fallback.")
-            if app_id:
-                return self._fallback_internal_api(app_id, announcement_type)
-            return {}
-
         with tempfile.TemporaryDirectory() as temp_dir_str:
             temp_dir = Path(temp_dir_str)
-            final_xbrl_path = temp_dir / "filing.xml"
-            xbrl_content = b""
 
-            # 1. Download XBRL XML using Adapter
+            # 1. Download XBRL filing using Adapter
             try:
-                # Download to temp dir
-                if not self.adapter.download_document(xbrl_url, temp_dir):
-                    logger.error(f"Adapter failed to download XBRL: {xbrl_url}")
+                # We use download_and_extract which ensures complete extraction of ZIPs
+                if not self.adapter.download_and_extract(xbrl_url, temp_dir):
+                    logger.error(f"Adapter failed to download/extract XBRL filing: {xbrl_url}")
                     if app_id:
                         return self._fallback_internal_api(app_id, announcement_type)
                     return {}
 
-                # Find the file (name might vary)
-                downloaded_files = list(temp_dir.glob("*.xml"))
-                if not downloaded_files:
-                    logger.error("Downloaded file not found or not XML")
+                # 2. Find the actual XBRL instance (.xml)
+                downloaded_xmls = []
+                for ext in ["*.xml", "*.XML"]:
+                    downloaded_xmls.extend(list(temp_dir.rglob(ext)))
+
+                if not downloaded_xmls:
+                    logger.error(f"No XBRL XML found in extracted content: {xbrl_url}")
                     if app_id:
                         return self._fallback_internal_api(app_id, announcement_type)
                     return {}
 
-                # Use the first XML file found
-                actual_file_path = downloaded_files[0]
+                logger.info(f"Found {len(downloaded_xmls)} XML file(s) in download.")
 
-                # Read content for schema detection
-                with open(actual_file_path, "rb") as f:
-                    xbrl_content = f.read()
-
-                # Rename to standard name for consistency logic below
-                shutil.move(actual_file_path, final_xbrl_path)
-
-            except Exception as e:
-                logger.error(f"Error downloading/processing XBRL: {e}")
-                if app_id:
-                    return self._fallback_internal_api(app_id, announcement_type)
-                return {}
-
-            # 2. Find schemaRef inside the XBRL
-            schema_ref = self._find_schema_ref(xbrl_content)
-
-            # 3. Setup Taxonomy Environment
-            # We copy the cached taxonomy into the temp dir to allow Arelle to resolve relative paths
-            if taxonomy_dir and taxonomy_dir.exists() and schema_ref:
-                found_schema_dir = None
-                # Search for the specific schema file in the cached taxonomy
-                for root, dirs, files in os.walk(taxonomy_dir):
-                    if schema_ref in files:
-                        found_schema_dir = Path(root)
+                actual_file_path = None
+                for xml_file in downloaded_xmls:
+                    name = xml_file.name.lower()
+                    if not any(x in name for x in ["-pre", "-def", "-lab", "-cal", ".xsd", "schema", "taxonomy"]):
+                        actual_file_path = xml_file
                         break
 
-                if found_schema_dir:
-                    try:
-                        # Copy entire taxonomy structure to temp
-                        shutil.copytree(taxonomy_dir, temp_dir / "taxonomy", dirs_exist_ok=True)
+                if not actual_file_path:
+                    actual_file_path = downloaded_xmls[0]
 
-                        # Find schema in the temp copy
-                        temp_schema_dir = None
-                        for root, dirs, files in os.walk(temp_dir / "taxonomy"):
-                            if schema_ref in files:
-                                temp_schema_dir = Path(root)
-                                break
+                logger.info(f"Using XBRL instance: {actual_file_path.relative_to(temp_dir)}")
 
-                        if temp_schema_dir:
-                            # Move XML file to be a sibling of the schema
-                            # This fixes relative path resolution for XSDs
-                            new_xbrl_path = temp_schema_dir / "filing.xml"
-                            shutil.move(final_xbrl_path, new_xbrl_path)
-                            final_xbrl_path = new_xbrl_path
-                    except Exception as e:
-                        logger.warning(f"Failed to setup taxonomy environment: {e}")
+                # Use the new standalone parser package!
+                # All taxonomy and Arelle logic is safely abstracted there
+                logger.info("Passing instance to nse-xbrl-parser...")
+                parsed_data = parse_xbrl_file(actual_file_path)
+                logger.info(f"Successfully parsed {len(parsed_data)} facts from XBRL.")
 
-            # 4. Initialize Arelle Controller
-            # Use 'logToBuffer' to prevent Arelle from spamming stdout
-            cntlr = Cntlr.Cntlr(logFileName="logToBuffer")
-            cntlr.modelManager.validate = True
+                return parsed_data
 
-            model_xbrl = None
-            try:
-                # Load the model
-                # This performs validation and schema loading
-                model_xbrl = cntlr.modelManager.load(str(final_xbrl_path))
             except Exception as e:
-                logger.error(f"Arelle failed to load XBRL: {e}")
-                if cntlr:
-                    cntlr.close()
+                logger.error(f"Error processing XBRL filing via parser package: {e}")
                 if app_id:
                     return self._fallback_internal_api(app_id, announcement_type)
                 return {}
-
-            # Check for critical failures (None or no facts)
-            # 0 facts typically indicates schema loading failure where instance was invalid against empty schema
-            if model_xbrl is None or len(model_xbrl.facts) == 0:
-                logger.warning(
-                    f"Arelle loaded model with {0 if model_xbrl is None else len(model_xbrl.facts)} facts. Switching to fallback."
-                )
-                if model_xbrl:
-                    model_xbrl.close()
-                cntlr.close()
-                if app_id:
-                    return self._fallback_internal_api(app_id, announcement_type)
-                return {}
-
-            parsed_data = {}
-            for fact in model_xbrl.facts:
-                label = str(fact.qname)
-
-                # Attempt to get human-readable label
-                if fact.concept is not None:
-                    lbl = fact.concept.label(lang="en")
-                    if lbl:
-                        label = lbl
-                    else:
-                        lbl = fact.concept.label(
-                            lang="en",
-                            labelrole="http://www.xbrl.org/2003/role/verboseLabel",
-                        )
-                        if lbl:
-                            label = lbl
-
-                value = fact.value
-                if value is None:
-                    value = ""
-                parsed_data[label] = value
-
-            model_xbrl.close()
-            cntlr.close()
-
-            return parsed_data
 
     def harvest_xbrl(
         self,

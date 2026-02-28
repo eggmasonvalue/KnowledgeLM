@@ -53,29 +53,32 @@ DOWNLOAD_CATEGORIES_CONFIG = {
         "label": "personnel change",
         "is_xbrl": True,
         "xbrl_cat": "Change in Personnel",
+        "output_keys": ["broadcastDateTime", "xbrl_data"],
     },
     "key_announcements": {
         "enabled_arg": "download_key_announcements",
         "label": "key announcement",
         "is_xbrl": True,
         "xbrl_cat": "Key announcements",
+        "output_keys": ["subOfAnn", "broadcastDateTime", "xbrl_data"],
     },
-    "board_outcome": {
-        "enabled_arg": "download_board_outcome",
-        "label": "board meeting outcome",
-        "is_xbrl": True,
-        "xbrl_cat": "Board Meeting Outcome",
-    },
+    # "board_outcome": {
+    #     "enabled_arg": "download_board_outcome",
+    #     "label": "board meeting outcome",
+    #     "is_xbrl": True,
+    #     "xbrl_cat": "Board Meeting Outcome",
+    # },
     "shm": {
         "enabled_arg": "download_shm",
         "label": "shareholder meeting",
         "is_xbrl": True,
         "xbrl_cat": "Shareholder Meetings",
+        "output_keys": ["eventType", "broadcastDateTime", "ixbrl", "local_pdf_path"],
     },
 }
 
 # --- Issue Documents Config ---
-ISSUE_DOCS_FOLDER = "issue_documents"
+ISSUE_DOCS_FOLDER = "share_issuance_docs"
 
 ISSUE_DOCS_CONFIG = {
     "offer_documents": {
@@ -84,7 +87,7 @@ ISSUE_DOCS_CONFIG = {
         "api_params": {"index": "equities"},
         # "attachment_fields": ["drhpAttach", "rhpAttach", "fpAttach"],
         "attachment_fields": ["fpAttach"],
-        "subfolder": "offer_documents",
+        "subfolder": "Offer Documents (IPO)",
         "symbol_reliable": False,
     },
     "rights_issue": {
@@ -92,7 +95,7 @@ ISSUE_DOCS_CONFIG = {
         "api_path": "/corporates/offerdocs/rights",
         "api_params": {"index": "equities"},
         "attachment_fields": ["draftAttch", "finalAttach"],
-        "subfolder": "rights_issue",
+        "subfolder": "Rights Issue",
         "symbol_reliable": True,
     },
     "qip_offer": {
@@ -100,7 +103,7 @@ ISSUE_DOCS_CONFIG = {
         "api_path": "/corporates/offerdocs/rights",
         "api_params": {"index": "qip"},
         "attachment_fields": ["attachFile"],
-        "subfolder": "qip_offer",
+        "subfolder": "QIP Offer",
         "symbol_reliable": False,
     },
     "info_memorandum": {
@@ -108,7 +111,7 @@ ISSUE_DOCS_CONFIG = {
         "api_path": "/corporates/offerdocs/arrangementscheme/infomemo",
         "api_params": {},
         "attachment_fields": ["date_attachmnt"],
-        "subfolder": "info_memorandum",
+        "subfolder": "Information Memorandum",
         "symbol_reliable": False,
     },
     "scheme_document": {
@@ -116,7 +119,7 @@ ISSUE_DOCS_CONFIG = {
         "api_path": "/corporates/offerdocs/arrangementscheme",
         "api_params": {},
         "attachment_fields": ["date_attachmnt"],
-        "subfolder": "scheme_document",
+        "subfolder": "Scheme of Arrangement",
         "symbol_reliable": False,
     },
 }

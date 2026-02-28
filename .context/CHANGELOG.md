@@ -3,15 +3,31 @@
 ## [Unreleased]
 
 ### Added
+- **ValuePickr Forum Support in WebUI**: Added UI elements to `app.py` for downloading ValuePickr forum threads, establishing feature parity with the CLI. Included a new checkbox and URL input under the "Select Filing Categories" section.
+- **Configurable JSON Output**: Introduced an `output_keys` configuration option in `config.py` for XBRL categories (`personnel`, `key_announcements`, and `shm`). The saved JSON files for these categories now only contain high-value fields (e.g., `xbrl_data`, `broadcastDateTime`, `local_pdf_path`) by default, rather than dumping all raw NSE metadata. This significantly improves data density for target LLMs like NotebookLM.
+
+### Fixed
+- **Robust XBRL Resolution**: Updated `nse-xbrl-parser` to fix "Shadowed XSD" and "Relative Path Resolution" errors. This enables successful parsing of Swiggy and other recent filings that were previously falling back to the internal API due to missing schema definitions.
+- Created `scripts/build_golden_taxonomy.py` to crawl the NSE site, download all historical taxonomy zips, and automatically extract them (including nested zips) into a unified `golden_taxonomy_v1` directory.
 - Integrated XBRL harvester for granular announcement data.
-- New announcement categories: "Change in Personnel", "Key announcements", "Board Meeting Outcome", and "Shareholder Meetings".
-- Structured XBRL query support in CLI (`personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`).
+- New announcement categories: "Change in Personnel", "Key announcements", <!-- "Board Meeting Outcome", --> and "Shareholder Meetings".
+- Structured XBRL query support in CLI (`personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`).
 - Enhanced Streamlit UI with XBRL category selection and detailed views.
+- **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
 
 ### Changed
+- **New Output Directory Structure**: Renamed the default download directory from `{SYMBOL}_filings` to `{SYMBOL}_sources`. Restructured the default hierarchy and filenames for XBRL and issue document downloads (e.g., `issue_documents` to `share_issuance_docs`, `personnel_changes.json`, `shareholder_meetings/shm_notices/`).
+- **Screener Only for Credit Ratings**: Disabled the NSE announcements fallback for credit ratings. Screener.in is now the sole source to ensure high-fidelity records and PDF conversion.
+- **Lazy Loading Announcements**: Optimized `process_request` to lazy-load the general announcements from the NSE API. This significantly speeds up downloads when only category-specific or XBRL data is requested.
 - Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
 - Upgraded `nse` dependency to `nse[server]>=2.1.0`.
 - Enabled `server=True` in `NSE` initialization for improved reliability in server environments.
+- **Consolidated Downloads**: `NSEAdapter` now uses a single, robust `download_and_extract` method ensuring all contents of ZIP archives are reliably extracted.
+- **Human-Readable Labels**: XBRL parsing now preserves original casing and spaces from the taxonomy (e.g., "Name of the company") instead of forcing `snake_case`.
+
+### Fixed
+- **Arelle Parsing Bugs**: Resolved a critical indentation bug where Arelle was trying to parse files that had already been deleted from the temporary directory.
+- **Verbose Fallbacks**: Added aggressive warning logs (`!!! SWITCHING TO INTERNAL API FALLBACK !!!`) if Arelle parsing ultimately fails, improving diagnostic visibility.
 
 ## [5.0.0] - 2026-02-15
 
@@ -89,7 +105,7 @@
 - **External APIs**:
   - **NSE India**: Primary source for filenames and filing metadata (via `NSEAdapter`).
   - **NSE XBRL API**: Source for granular, structured corporate announcements (via `NSEXBRLHarvester`).
-  - **Screener.in**: Fallback source for credit rating documents.
+  - **Screener.in**: Sole source for credit rating documents.
   - **ValuePickr**: Source for forum thread data and discussions.
 
 ## [4.0.0] - 2026-02-08
@@ -183,7 +199,7 @@
 
 ### Features
 - Batch download NSE announcements by category
-- Credit rating dual-source (screener.in primary, NSE fallback)
+- Credit rating extraction from Screener.in
 - Individual filing views (Resignations, Reg 30, Press Releases)
 - Annual report download (date range or all)
 - Streamlit UI with status feedback
