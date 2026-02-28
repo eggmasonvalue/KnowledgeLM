@@ -127,10 +127,11 @@ def test_process_credit_ratings_screener_success(mock_screener_dl, mock_adapter_
 
 @patch("knowledgelm.core.service.NSEAdapter")
 @patch("knowledgelm.core.service.download_credit_ratings_from_screener")
-def test_process_credit_ratings_fallback(mock_screener_dl, mock_adapter_cls):
-    """Test credit ratings fallback to NSE."""
+def test_process_credit_ratings_no_fallback(mock_screener_dl, mock_adapter_cls):
+    """Test that credit ratings do NOT fallback to NSE after it was disabled."""
     mock_adapter = mock_adapter_cls.return_value
     mock_adapter.validate_symbol.return_value = True
+    # Even if NSE has announcements
     mock_adapter.get_announcements.return_value = [
         {
             "desc": "credit rating",
@@ -149,36 +150,9 @@ def test_process_credit_ratings_fallback(mock_screener_dl, mock_adapter_cls):
         "SYMBOL", START_DATE, END_DATE, "folder", options
     )
 
-    assert counts["credit rating"] == 1
-    mock_screener_dl.assert_called_once()
-    mock_adapter.download_document.assert_called_once()
-
-@patch("knowledgelm.core.service.NSEAdapter")
-@patch("knowledgelm.core.service.download_credit_ratings_from_screener")
-def test_process_credit_ratings_existing_file(mock_screener_dl, mock_adapter_cls):
-    """Test credit ratings fallback skips existing files."""
-    mock_adapter = mock_adapter_cls.return_value
-    mock_adapter.validate_symbol.return_value = True
-    mock_adapter.get_announcements.return_value = [
-        {
-            "desc": "credit rating",
-            "attchmntFile": "http://example.com/rating.pdf",
-            "attchmntText": ""
-        }
-    ]
-    mock_screener_dl.return_value = 0
-
-    service = KnowledgeService("/tmp")
-    options = {"download_credit_rating": True}
-
-    # Simulate existing file
-    with patch("pathlib.Path.glob") as mock_glob:
-        mock_glob.return_value = [Path("rating.pdf")]
-        announcements, counts = service.process_request(
-            "SYMBOL", START_DATE, END_DATE, "folder", options
-        )
-
+    # Should be 0 because fallback is disabled
     assert counts["credit rating"] == 0
+    mock_screener_dl.assert_called_once()
     mock_adapter.download_document.assert_not_called()
 
 @patch("knowledgelm.core.service.NSEAdapter")
@@ -291,25 +265,6 @@ def test_process_annual_reports_malformed(mock_adapter_cls):
         "SYMBOL", START_DATE, END_DATE, "folder", options, annual_reports_all_mode=True
     )
     assert counts["annual report"] == 0
-
-@patch("knowledgelm.core.service.NSEAdapter")
-@patch("knowledgelm.core.service.download_credit_ratings_from_screener")
-def test_process_credit_ratings_missing_url(mock_screener, mock_adapter_cls):
-    """Test credit ratings fallback when URL is missing."""
-    mock_adapter = mock_adapter_cls.return_value
-    mock_adapter.validate_symbol.return_value = True
-    mock_adapter.get_announcements.return_value = [
-        {"desc": "credit rating"} # No attchmntFile
-    ]
-    mock_screener.return_value = 0
-
-    service = KnowledgeService("/tmp")
-    options = {"download_credit_rating": True}
-
-    _, counts = service.process_request(
-        "SYMBOL", START_DATE, END_DATE, "folder", options
-    )
-    assert counts["credit rating"] == 0
 
 @patch("knowledgelm.core.service.NSEAdapter")
 def test_process_issue_documents_empty(mock_adapter_cls):

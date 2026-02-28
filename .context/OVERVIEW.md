@@ -14,7 +14,7 @@ A CLI and Streamlit web app for batch downloading NSE company announcements by c
 - **Agent Skill**: Works with Claude Code, Gemini CLI, Codex, and other LLMs
 - Download announcements by category (Transcripts, Investor Presentations, Credit Ratings, Related Party Transactions, Annual Reports)
 - View/download individual filings via Streamlit UI (Resignations, Reg 30 Updates, Press Releases)
-- Credit ratings: Primary source (screener.in, all-time) with NSE fallback (date-filtered)
+- Credit ratings: Screener.in is the sole source (high-fidelity PDF conversion and all-time records).
 - **ValuePickr Export**: Download entire forum threads as clean PDFs for deep research
 - **XBRL Parsing**: Extract structured financial data directly from NSE filings (Change in Personnel, Board Outcomes, Shareholder Meetings) using our standalone `nse-xbrl-parser` engine for high-speed offline resolution.
 - **NotebookLM Integration**: Skill includes workflow for adding downloads as notebook sources

@@ -13,8 +13,8 @@ dependencies = [
     "beautifulsoup4",
     "selenium>=4.40.0",
     "click>=8.1.0",
-    "pdfplumber>=0.11.9",
     "nse-xbrl-parser",
+    "markitdown>=0.1.5",
 ]
 
 authors = [
