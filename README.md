@@ -19,7 +19,7 @@ This skill allows your AI agent to batch download investor materials (transcript
 
 ## ✨ Features
 
-- **Agent-First**: Optimized for LLMs with JSON output (`--json`), a standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution to preserve the context window.
+- **Agent-First**: Optimized for LLMs with standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution (primary output is JSON) to preserve the context window.
 - **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
 - **Issue Documents**: IPO prospectus, rights offers, QIP placements, information memoranda, and scheme documents — unified across 5 NSE endpoints with inconsistent schemas, unreliable metadata, and mixed archive formats so you don't have to be.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.

@@ -96,13 +96,6 @@ def main():
     default=False,
     help="Download ALL annual reports regardless of date range.",
 )
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    default=False,
-    help="Output results as JSON for agent parsing.",
-)
 def download(
     symbol: str,
     from_date: str,
@@ -110,7 +103,6 @@ def download(
     categories: str,
     output: Optional[str],
     annual_reports_all: bool,
-    output_json: bool,
 ):
     r"""Download company filings from NSE India.
 
@@ -120,7 +112,7 @@ def download(
         knowledgelm download INFY --from 2020-01-01 --to 2025-01-26 \
             --categories transcripts,credit_rating
         knowledgelm download RELIANCE --from 2020-01-01 --to 2025-01-26 \
-            --annual-reports-all --json
+            --annual-reports-all
 
     \b
     Available Categories:
@@ -136,8 +128,7 @@ def download(
         end = parse_date(to_date)
     except click.BadParameter as e:
         logger.error(f"Invalid date format: {e}")
-        if output_json:
-            click.echo(json.dumps({"error": str(e), "success": False}))
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
     # Determine output directory
@@ -155,8 +146,7 @@ def download(
     if invalid:
         msg = f"Invalid categories: {', '.join(invalid)}. Valid: {', '.join(valid_cats)}"
         logger.error(msg)
-        if output_json:
-            click.echo(json.dumps({"error": msg, "success": False}))
+        click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
 
     options = {
@@ -185,32 +175,31 @@ def download(
             "total_files": sum(counts.values()),
         }
 
-        if output_json:
-            logger.info(f"Producing JSON result for {symbol.upper()}")
-            click.echo(json.dumps(result, indent=2))
-        else:
-            logger.info(f"✓ Downloaded filings for {symbol.upper()}")
-            logger.info(f"  Output: {result['output_directory']}")
-            logger.info("  Categories:")
-            for cat, count in counts.items():
-                logger.info(f"    - {cat}: {count} files")
-            logger.info(f"  Total: {result['total_files']} files")
+        # Output result as JSON to stdout (always)
+        click.echo(json.dumps(result, indent=2))
+
+        # Log process summary (intermediate logs already sent to knowledgelm.log)
+        logger.info(f"Producing JSON result for {symbol.upper()}")
+        logger.info(f"✓ Downloaded filings for {symbol.upper()}")
+        logger.info(f"  Output: {result['output_directory']}")
+        logger.info("  Categories:")
+        for cat, count in counts.items():
+            logger.info(f"    - {cat}: {count} files")
+        logger.info(f"  Total: {result['total_files']} files")
+        logger.info(f"JSON Result: {json.dumps(result)}")
 
     except ValueError as e:
         logger.error(f"Value error during download: {e}")
-        if output_json:
-            click.echo(json.dumps({"error": str(e), "success": False}))
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
     except Exception as e:
         logger.exception("Unexpected error during download")
-        if output_json:
-            click.echo(json.dumps({"error": str(e), "success": False}))
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
 
 @main.command("list-categories")
-@click.option("--json", "output_json", is_flag=True, help="Output as JSON.")
-def list_categories(output_json: bool):
+def list_categories():
     """List available download categories.
 
     Shows all filing types that can be downloaded from NSE.
@@ -225,13 +214,14 @@ def list_categories(output_json: bool):
         for cat, cfg in DOWNLOAD_CATEGORIES_CONFIG.items()
     }
 
-    if output_json:
-        logger.info("Producing JSON list of categories")
-        click.echo(json.dumps(categories, indent=2))
-    else:
-        logger.info("Available categories:")
-        for cat, info in categories.items():
-            logger.info(f"  {cat}: {info['label']}")
+    # Always output JSON to stdout
+    click.echo(json.dumps(categories, indent=2))
+
+    # Log results to knowledgelm.log
+    logger.info("Available categories:")
+    for cat, info in categories.items():
+        logger.info(f"  {cat}: {info['label']}")
+    logger.info(f"JSON Result: {json.dumps(categories)}")
 
 
 @main.command("forum")
@@ -243,15 +233,13 @@ def list_categories(output_json: bool):
     default=None,
     help="Output directory path. Defaults to ./<SYMBOL>_valuepickr/",
 )
-@click.option("--json", "output_json", is_flag=True, help="Output result as JSON.")
-def download_forum(url: str, symbol: Optional[str], output: Optional[str], output_json: bool):
+def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
     """Download a ValuePickr forum thread as a clean PDF.
 
     Args:
         url: The full URL of the ValuePickr thread.
         symbol: Optional company symbol for the filename and folder.
         output: Optional custom output directory.
-        output_json: Whether to output the result as JSON.
     """
     configure_logging()
 
@@ -303,17 +291,17 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str], outpu
             "references_path": str(ref_path.absolute()),
         }
 
-        if output_json:
-            logger.info(f"Producing JSON forum result for {url}")
-            click.echo(json.dumps(result, indent=2))
-        else:
-            logger.info(f"✓ Successfully saved thread to {result['output_path']}")
-            logger.info(f"✓ References extracted to {result['references_path']}")
+        # Always output JSON to stdout
+        click.echo(json.dumps(result, indent=2))
+
+        # Log process summary
+        logger.info(f"✓ Successfully saved thread to {result['output_path']}")
+        logger.info(f"✓ References extracted to {result['references_path']}")
+        logger.info(f"JSON Result: {json.dumps(result)}")
 
     except Exception as e:
         logger.exception("Failed to download forum thread")
-        if output_json:
-            click.echo(json.dumps({"error": str(e), "success": False}))
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
 
@@ -324,14 +312,7 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str], outpu
 @click.option(
     "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
 )
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    default=False,
-    help="Output results as JSON for agent parsing.",
-)
-def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool):
+def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query board-level personnel changes via XBRL.
 
     Saves parsed JSON to the output directory and returns a summary.
@@ -340,7 +321,7 @@ def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str], 
     Examples:
         knowledgelm personnel HDFCBANK --from 2023-01-01 --to 2025-01-26
     """
-    _query_xbrl(symbol, "personnel", from_date, to_date, output, output_json)
+    _query_xbrl(symbol, "personnel", from_date, to_date, output)
 
 
 @main.command("key-announcements")
@@ -350,18 +331,9 @@ def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str], 
 @click.option(
     "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
 )
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    default=False,
-    help="Output results as JSON for agent parsing.",
-)
-def key_announcements(
-    symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool
-):
+def key_announcements(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query key corporate announcements (Reg 30, fund raising, etc.) via XBRL."""
-    _query_xbrl(symbol, "key_announcements", from_date, to_date, output, output_json)
+    _query_xbrl(symbol, "key_announcements", from_date, to_date, output)
 
 
 @main.command("board-outcome")
@@ -371,18 +343,9 @@ def key_announcements(
 @click.option(
     "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
 )
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    default=False,
-    help="Output results as JSON for agent parsing.",
-)
-def board_outcome(
-    symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool
-):
+def board_outcome(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query board meeting outcomes via XBRL."""
-    _query_xbrl(symbol, "board_outcome", from_date, to_date, output, output_json)
+    _query_xbrl(symbol, "board_outcome", from_date, to_date, output)
 
 
 @main.command("shareholder-meetings")
@@ -392,23 +355,12 @@ def board_outcome(
 @click.option(
     "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
 )
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    default=False,
-    help="Output results as JSON for agent parsing.",
-)
-def shareholder_meetings(
-    symbol: str, from_date: str, to_date: str, output: Optional[str], output_json: bool
-):
+def shareholder_meetings(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query shareholder meeting announcements via XBRL."""
-    _query_xbrl(symbol, "shm", from_date, to_date, output, output_json)
+    _query_xbrl(symbol, "shm", from_date, to_date, output)
 
 
-def _query_xbrl(
-    symbol: str, category: str, from_date: str, to_date: str, output: str, output_json: bool
-):
+def _query_xbrl(symbol: str, category: str, from_date: str, to_date: str, output: str):
     """Helper to run XBRL queries."""
     configure_logging()
 
@@ -416,8 +368,7 @@ def _query_xbrl(
         start = parse_date(from_date)
         end = parse_date(to_date)
     except click.BadParameter as e:
-        if output_json:
-            click.echo(json.dumps({"error": str(e), "success": False}))
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
     # Determine output directory (same logic as download)
@@ -449,19 +400,20 @@ def _query_xbrl(
             "output_path": str(json_path.absolute()) if count > 0 else None,
         }
 
-        if output_json:
-            click.echo(json.dumps(result, indent=2))
+        # Always output JSON to stdout
+        click.echo(json.dumps(result, indent=2))
+
+        # Log process summary
+        if count > 0:
+            logger.info(f"✓ Found {count} {label} record(s).")
+            logger.info(f"  Parsed details saved to: {result['output_path']}")
         else:
-            if count > 0:
-                logger.info(f"✓ Found {count} {label} record(s).")
-                logger.info(f"  Parsed details saved to: {result['output_path']}")
-            else:
-                logger.info(f"No {label} records found for the given date range.")
+            logger.info(f"No {label} records found for the given date range.")
+        logger.info(f"JSON Result: {json.dumps(result)}")
 
     except Exception as e:
         logger.exception(f"Failed to query {category}")
-        if output_json:
-            click.echo(json.dumps({"error": str(e), "success": False}))
+        click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
 
