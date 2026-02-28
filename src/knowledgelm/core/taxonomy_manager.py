@@ -10,17 +10,18 @@ logger = logging.getLogger(__name__)
 
 # Map of major XBRL announcement types and their corresponding Taxonomy URLs
 TAXONOMY_URL_MAP = {
-    "Reg30": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy_Regulation_30_Restructuring.zip",
-    "announcements": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy_Changes_In_Management.zip",
-    "outcome": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy_Announcements_Pertaining_To_Outcome_Of_Board_Meeting_0.zip",
+    "Reg30": "https://nsearchives.nseindia.com//web/mediaattachment/2026-02/Taxonomy_Regulation_30_Restructuring_1_20260224115658.zip",
+    "announcements": "https://nsearchives.nseindia.com//web/mediaattachment/2026-02/Taxonomy_Changes_In_Management__20260224115401.zip",
+    "outcome": "https://nsearchives.nseindia.com//web/mediaattachment/2026-02/Taxonomy_Announcements_Pertaining_To_Outcome_Of_Board_Meeting_20260224115811.zip",
     "fundRaising": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-%20Alteration%20of%20Capital%20and%20Fund%20Raising.zip",
     "agr": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-%20Announcement%20for%20Agreements.zip",
     "award": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy_Awarding_Or_Bagging_Or_Receiving_Of_Orders_Or_Contracts.zip",
     "annFraud": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-%20Announcement%20for%20Fraud%20or%20Default.zip",
     "cdr": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-%20Corporate%20Debt%20Restructuring.zip",
-    "shm": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-%20Notice%20of%20Shareholders%20Meeting.zip",
+    "shm": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-%20Notice%20of%20Shareholders%20Meeting_0.zip",
     "CIRP": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy_Corporate_Insolvency_Resolution_Process.zip",
     "annOts": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Taxonomy%20-One%20Time%20Settlement%20and%20RestructuringLoansOrBorrowings.zip",
+    "master": "https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Financial%20Results_Ind%20AS%20Taxonomy.zip",
 }
 
 
@@ -76,6 +77,14 @@ class TaxonomyManager:
 
         return self._download_and_extract(type_code, target_dir)
 
+    def get_master_taxonomy_dir(self) -> Optional[Path]:
+        """Get the master taxonomy directory for common dependencies.
+        
+        Returns:
+            Path to the master taxonomy directory.
+        """
+        return self.get_taxonomy_dir("master")
+
     def _download_and_extract(self, type_code: str, target_dir: Path) -> Optional[Path]:
         """Download and extract the taxonomy zip file using NSEAdapter.
 
@@ -106,7 +115,7 @@ class TaxonomyManager:
         target_dir.mkdir(parents=True, exist_ok=True)
 
         # Use adapter to download and extract
-        # download_and_extract uses nse.download_document which extracts to folder
+        # download_and_extract uses nse._req and robust zip extraction
         success = self.adapter.download_and_extract(url, target_dir)
 
         if success:

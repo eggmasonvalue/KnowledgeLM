@@ -7,11 +7,18 @@
 - New announcement categories: "Change in Personnel", "Key announcements", "Board Meeting Outcome", and "Shareholder Meetings".
 - Structured XBRL query support in CLI (`personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`).
 - Enhanced Streamlit UI with XBRL category selection and detailed views.
+- **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
 
 ### Changed
 - Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
 - Upgraded `nse` dependency to `nse[server]>=2.1.0`.
 - Enabled `server=True` in `NSE` initialization for improved reliability in server environments.
+- **Consolidated Downloads**: `NSEAdapter` now uses a single, robust `download_and_extract` method ensuring all contents of ZIP archives are reliably extracted.
+- **Human-Readable Labels**: XBRL parsing now preserves original casing and spaces from the taxonomy (e.g., "Name of the company") instead of forcing `snake_case`.
+
+### Fixed
+- **Arelle Parsing Bugs**: Resolved a critical indentation bug where Arelle was trying to parse files that had already been deleted from the temporary directory.
+- **Verbose Fallbacks**: Added aggressive warning logs (`!!! SWITCHING TO INTERNAL API FALLBACK !!!`) if Arelle parsing ultimately fails, improving diagnostic visibility.
 
 ## [5.0.0] - 2026-02-15
 

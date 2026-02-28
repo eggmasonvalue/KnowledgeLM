@@ -32,6 +32,8 @@ class KnowledgeService:
                 However, for this app structure, the UI passes the specific folder name.
         """
         self.base_path = Path(base_download_path)
+        # Initialize an NSEAdapter that uses the base_path as its working directory
+        self.nse_adapter = NSEAdapter(self.base_path)
 
     def process_request(
         self,
@@ -56,7 +58,7 @@ class KnowledgeService:
             Tuple of (announcements_list, category_counts_dict)
         """
         logger.info(
-            f"Starting processing request for {symbol} ({from_date.date()} - {to_date.date()})"
+            f"Starting processing request for {symbol} ({from_date} - {to_date})"
         )
 
         # 1. Setup Folder
@@ -402,7 +404,7 @@ class KnowledgeService:
 
             logger.info(
                 f"Fetching general announcements for SHM PDF matching "
-                f"({search_start.date()} to {search_end.date()})..."
+                f"({search_start} to {search_end})..."
             )
             # Use a fresh fetch to ensure we have the data
             general_anns = adapter.get_announcements(symbol, search_start, search_end)
@@ -542,7 +544,7 @@ class KnowledgeService:
             logger.warning(f"Unknown XBRL category: {category}")
             return []
 
-        harvester = NSEXBRLHarvester()
+        harvester = NSEXBRLHarvester(nse_adapter=self.nse_adapter)
         types = XBRL_CATEGORIES[category]
 
         # Convert datetime to dd-mm-yyyy for the harvester

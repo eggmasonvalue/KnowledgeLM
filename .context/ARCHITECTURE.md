@@ -124,11 +124,14 @@ Full programmatic access via `knowledgelm` command:
 ### core/xbrl_harvester.py
 - **`NSEXBRLHarvester`**: Fetches and parses XBRL filings from NSE.
 - **Arelle Integration**: Uses `arelle` library to parse raw XML filings and resolve labels from taxonomies.
-- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) if taxonomy parsing fails (e.g., Reg30).
+- **Global Taxonomy Mixer**: Implements a robust environment setup by merging **all cached taxonomies** into a temporary directory before parsing. This solves the "missing XSD" problem where filings reference entry-points from different years or categories.
+- **Human-Readable Labels**: Prioritizes standard and verbose labels while preserving original casing/spaces for maximum legibility.
+- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) with prominent logging if Arelle parsing fails.
 
 ### core/taxonomy_manager.py
 - **`TaxonomyManager`**: Handles downloading, extracting, and caching of XBRL taxonomy ZIPs.
-- **Caching**: Stores taxonomies in `.taxonomies/` to enable offline schema resolution by Arelle.
+- **Consolidated logic**: Uses `NSEAdapter.download_and_extract` for all taxonomy fetching.
+- **Caching**: Stores taxonomies in `.taxonomies/` to enable "global pool" resolution by the harvester.
 
 ### XBRL Announcement Harvester
 
@@ -141,8 +144,9 @@ The `NSEXBRLHarvester` provides granular, field-level parsing of corporate annou
 ### data/
 - **`nse_adapter.py`**: Wraps the external `nse` library.
   - **Validation**: Checks symbol validity via `equityQuote`.
+  - **Consolidated Download**: `download_and_extract` provides a unified, robust mechanism for both direct file downloads and recursive ZIP extraction.
   - **Issue Documents**: Fetches NSE corporate filing endpoints via `_req`.
-  - **Generic Fetching**: Exposes `fetch_json` and `download_raw` to support XBRL harvesting and taxonomy management.
+  - **Generic Fetching**: Exposes `fetch_json` to support XBRL harvesting and taxonomy management.
 - **`screener_adapter.py`**: Handles scraping from Screener.in.
   - Resolves ICRA PDF links directly.
   - Uses Selenium for high-fidelity HTML-to-PDF conversion.
