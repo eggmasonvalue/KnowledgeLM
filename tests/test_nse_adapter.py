@@ -1,8 +1,8 @@
-import pytest
 import sys
-from unittest.mock import MagicMock
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock
+
 from knowledgelm.data.nse_adapter import NSEAdapter
 
 # Access the mock module we set up in conftest.py
@@ -61,20 +61,26 @@ def test_get_annual_reports_error(mock_nse):
     assert result == {}
 
 def test_download_document_success(mock_nse):
-    """Test successful document download."""
+    """Test successful document download via _req."""
     adapter = NSEAdapter(Path("foo"))
     url = "http://example.com/doc.pdf"
     dest = Path("bar")
 
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {"Content-Type": "application/pdf"}
+    mock_response.content = b"PDF content"
+    mock_nse._req.return_value = mock_response
+
     result = adapter.download_document(url, dest)
 
     assert result is True
-    mock_nse.download_document.assert_called_once_with(url, dest)
+    mock_nse._req.assert_called_with(url)
 
 def test_download_document_error(mock_nse):
     """Test error handling during document download."""
     adapter = NSEAdapter(Path("foo"))
-    mock_nse.download_document.side_effect = Exception("Download failed")
+    mock_nse._req.side_effect = Exception("Download failed")
 
     result = adapter.download_document("http://example.com/doc.pdf", Path("bar"))
 
@@ -108,15 +114,29 @@ def test_download_and_extract_success(mock_nse):
     url = "http://example.com/doc.zip"
     dest = Path("bar")
 
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {"Content-Type": "application/zip"}
+    
+    # Create a dummy zip file in memory
+    import io
+    import zipfile
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zf:
+        zf.writestr("test.txt", "content")
+    mock_response.content = zip_buffer.getvalue()
+    
+    mock_nse._req.return_value = mock_response
+
     result = adapter.download_and_extract(url, dest)
 
     assert result is True
-    mock_nse.download_document.assert_called_once_with(url, dest)
+    mock_nse._req.assert_called_with(url)
 
 def test_download_and_extract_error(mock_nse):
     """Test error handling during download and extraction."""
     adapter = NSEAdapter(Path("foo"))
-    mock_nse.download_document.side_effect = Exception("Download failed")
+    mock_nse._req.side_effect = Exception("Download failed")
 
     result = adapter.download_and_extract("http://example.com/doc.zip", Path("bar"))
 

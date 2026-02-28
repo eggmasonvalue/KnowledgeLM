@@ -1,6 +1,8 @@
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
 
 # --- ForumClient Tests ---

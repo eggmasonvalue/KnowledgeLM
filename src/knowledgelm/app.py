@@ -3,18 +3,13 @@
 import logging
 from datetime import date
 
-import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from nse import NSE  # Kept for direct download reuse in UI if needed, or better replaced by service
 
 from knowledgelm.config import (
     DOWNLOAD_CATEGORIES_CONFIG,
-    PRESS_RELEASES_FOLDER,
-    RESIGNATIONS_FOLDER,
 )
 from knowledgelm.core.service import KnowledgeService
-from knowledgelm.utils.file_utils import get_download_path
 
 # Configure logging — route to file, keep terminal clean
 logging.basicConfig(
@@ -60,15 +55,15 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("Select Filing Categories")
     col_c1, col_c2, col_c3 = st.columns(3)
-    
+
     with col_c1:
         dl_transcripts = st.checkbox("Analyst call transcripts", value=True)
         dl_investor_pres = st.checkbox("Investor presentations", value=True)
         dl_annual_reports = st.checkbox("Annual reports", value=True)
         # Annual Report sub-option - flat layout for perfect alignment
         dl_annual_reports_all = st.checkbox(
-            "All ARs (Ignore Range)", 
-            value=False, 
+            "All ARs (Ignore Range)",
+            value=False,
             disabled=not dl_annual_reports
         )
         annual_reports_download_all = dl_annual_reports_all if dl_annual_reports else False
@@ -147,9 +142,9 @@ if st.button("Download", type="primary", use_container_width=False):
                 summary_body = f"{summary_header}\n\n" + "\n\n".join(processed_counts)
             else:
                 summary_body = summary_header
-            
+
             st.session_state.scroll_to_results = True
-            
+
             # Anchor div for results scroll
             st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
             st.success(summary_body)

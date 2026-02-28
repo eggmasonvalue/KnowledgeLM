@@ -1,11 +1,12 @@
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
+
 from knowledgelm.data.screener_adapter import (
+    _download_with_selenium,
     _get_icra_pdf_url,
     download_credit_ratings_from_screener,
-    _download_with_selenium
 )
+
 
 def test_get_icra_pdf_url():
     """Test ICRA URL conversion."""

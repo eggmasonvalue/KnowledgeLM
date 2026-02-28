@@ -52,16 +52,12 @@ class NSEXBRLHarvester:
 
     Attributes:
         adapter (NSEAdapter): The adapter instance used for network requests.
-        taxonomy_manager (TaxonomyManager): Manager for handling taxonomy downloading and caching.
     """
 
     def __init__(self, nse_adapter: Optional[NSEAdapter] = None):
         if nse_adapter:
             self.adapter = nse_adapter
         else:
-            # Default to a temp path if no adapter provided (fallback behavior)
-            logger.warning("No NSEAdapter provided to Harvester. Creating default one.")
-            self.adapter = NSEAdapter(Path(tempfile.gettempdir()))
             # Default to a temp path if no adapter provided (fallback behavior)
             logger.warning("No NSEAdapter provided to Harvester. Creating default one.")
             self.adapter = NSEAdapter(Path(tempfile.gettempdir()))
@@ -163,7 +159,7 @@ class NSEXBRLHarvester:
                 downloaded_xmls = []
                 for ext in ["*.xml", "*.XML"]:
                     downloaded_xmls.extend(list(temp_dir.rglob(ext)))
-                
+
                 if not downloaded_xmls:
                     logger.error(f"No XBRL XML found in extracted content: {xbrl_url}")
                     if app_id:
@@ -178,7 +174,7 @@ class NSEXBRLHarvester:
                     if not any(x in name for x in ["-pre", "-def", "-lab", "-cal", ".xsd", "schema", "taxonomy"]):
                         actual_file_path = xml_file
                         break
-                
+
                 if not actual_file_path:
                     actual_file_path = downloaded_xmls[0]
 
@@ -189,7 +185,7 @@ class NSEXBRLHarvester:
                 logger.info("Passing instance to nse-xbrl-parser...")
                 parsed_data = parse_xbrl_file(actual_file_path)
                 logger.info(f"Successfully parsed {len(parsed_data)} facts from XBRL.")
-                
+
                 return parsed_data
 
             except Exception as e:
