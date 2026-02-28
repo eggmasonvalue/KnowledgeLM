@@ -13,7 +13,6 @@ graph TD
         SRV[src/knowledgelm/core/service.py]
         FORUM[src/knowledgelm/core/forum.py<br/>ValuePickr Export]
         XBRL[src/knowledgelm/core/xbrl_harvester.py<br/>XBRL Harvester]
-        TAX_MGR[src/knowledgelm/core/taxonomy_manager.py<br/>Taxonomy Manager]
     end
 
     subgraph Data["Data Layer"]
@@ -33,7 +32,7 @@ graph TD
     subgraph External["External Sources"]
         NSE_LIB[NSE API<br/>nse library]
         SCR_WEB[screener.in<br/>Credit Ratings]
-        ARELLE[Arelle<br/>XBRL Parsing]
+        NSE_XBRL_PARSER[nse-xbrl-parser<br/>External Engine]
     end
 
     CLI --> SRV
@@ -43,11 +42,9 @@ graph TD
     SRV --> NSE_ADPT
     SRV --> SCR_ADPT
     SRV --> F_UTIL
-    XBRL --> TAX_MGR
     XBRL --> NSE_ADPT
-    TAX_MGR --> NSE_ADPT
     NSE_ADPT --> NSE_LIB
-    XBRL --> ARELLE
+    XBRL --> NSE_XBRL_PARSER
     SCR_ADPT --> SCR_WEB
     CLI .-> SKILL
     APP ..-> CONF
@@ -67,8 +64,7 @@ KnowledgeLM/
 │       ├── core/
 │       │   ├── service.py        # Orchestration Logic
 │       │   ├── forum.py          # ValuePickr Logic
-│       │   ├── xbrl_harvester.py # XBRL Parsing Logic (Arelle Integration)
-│       │   └── taxonomy_manager.py # Taxonomy Caching & Mgmt
+│       │   └── xbrl_harvester.py # XBRL Orchestration (via nse-xbrl-parser)
 │       ├── data/
 │       │   ├── nse_adapter.py    # NSE Library Wrapper
 │       │   └── screener_adapter.py # Screener Scraper
@@ -123,15 +119,8 @@ Full programmatic access via `knowledgelm` command:
 
 ### core/xbrl_harvester.py
 - **`NSEXBRLHarvester`**: Fetches and parses XBRL filings from NSE.
-- **Arelle Integration**: Uses `arelle` library to parse raw XML filings and resolve labels from taxonomies.
-- **Global Taxonomy Mixer**: Implements a robust environment setup by merging **all cached taxonomies** into a temporary directory before parsing. This solves the "missing XSD" problem where filings reference entry-points from different years or categories.
-- **Human-Readable Labels**: Prioritizes standard and verbose labels while preserving original casing/spaces for maximum legibility.
-- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) with prominent logging if Arelle parsing fails.
-
-### core/taxonomy_manager.py
-- **`TaxonomyManager`**: Handles downloading, extracting, and caching of XBRL taxonomy ZIPs.
-- **Consolidated logic**: Uses `NSEAdapter.download_and_extract` for all taxonomy fetching.
-- **Caching**: Stores taxonomies in `.taxonomies/` to enable "global pool" resolution by the harvester.
+- **External Parsing Engine**: Delegates the heavy lifting of taxonomy resolution and absolute path rewriting to the `nse-xbrl-parser` package to limit execution time and complexity in the KnowledgeLM core base.
+- **Fallback Mechanism**: Degrades gracefully to use NSE's internal API (raw keys) with prominent logging if parser fails.
 
 ### XBRL Announcement Harvester
 
@@ -198,10 +187,8 @@ sequenceDiagram
         end
         alt XBRL Parsing
              S->>X: harvest_xbrl()
-             X->>T: get_taxonomy_dir()
-             T->>N: download_raw()
              X->>N: download_document() (XML)
-             X->>X: parse_xbrl() (Arelle)
+             X->>X: parse_xbrl() via nse-xbrl-parser
              alt Parsing Fails
                 X->>X: _fallback_internal_api()
                 X->>N: fetch_json()
