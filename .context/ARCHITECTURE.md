@@ -99,8 +99,8 @@ Full programmatic access via `knowledgelm` command:
 ## Component Responsibilities
 
 ### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`)
-- **XBRL Support**: Commands to query personnel, key announcements, board outcomes, and shareholder meetings via XBRL harvester.
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`)
+- **XBRL Support**: Commands to query personnel, key announcements, <!-- board outcomes, --> and shareholder meetings via XBRL harvester.
 - **JSON Output**: `--json` flag for agent parsing
 - **Help Discovery**: `--help` on all commands for agent self-discovery
 
@@ -124,7 +124,7 @@ Full programmatic access via `knowledgelm` command:
 
 ### XBRL Announcement Harvester
 
-The `NSEXBRLHarvester` provides granular, field-level parsing of corporate announcements (e.g., personnel changes, board outcomes).
+The `NSEXBRLHarvester` provides granular, field-level parsing of corporate announcements (e.g., personnel changes). <!-- , board outcomes). -->
 
 - **Standardized Flow**: XBRL categories are integrated into the main `process_request` flow.
 - **Persistence**: Detailed parsed data is saved as `xbrl_details.json` within the symbol's filing folder.
@@ -204,20 +204,21 @@ sequenceDiagram
 ## Output Structure
 
 ```
-{symbol}_filings/
+{symbol}_sources/
 ├── transcripts/
 ├── investor_presentations/
 ├── credit_rating/
 ├── related_party_txns/
 ├── annual_reports/
-├── personnel_details.json         (Parsed XBRL data)
-├── key_announcements_details.json (Parsed XBRL data)
-├── board_outcome_details.json     (Parsed XBRL data)
-├── shm_details.json               (Parsed XBRL data)
-└── press_releases/    (Optional: Logical grouping in UI)
-
-{symbol}_valuepickr/
-├── {slug}_valuepickr_forum.pdf
-└── {slug}_ValuePickr_references.md
+├── personnel_changes.json         (Parsed XBRL data)
+├── key_announcements.json         (Parsed XBRL data)
+├── share_issuance_docs/
+├── shareholder_meetings/
+│     ├── shm_notices/
+│     └── shm_details.json         (Parsed XBRL data)
+├── press_releases/
+└── forum_valuepickr/
+      ├── forum_thread.pdf
+      └── forum_links.md
 
 ```

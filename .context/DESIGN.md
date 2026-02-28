@@ -12,9 +12,9 @@ Batch download filings by category with configurable filters:
 ## [done] CLI Interface (v3.0)
 
 Full programmatic access via `knowledgelm`### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`)
+- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`)
 - **Categories**: `issue_documents` added alongside existing download categories.
-- **XBRL Support**: Commands to query personnel, key announcements, board outcomes, and shareholder meetings via XBRL harvester.
+- **XBRL Support**: Commands to query personnel, key announcements, <!-- board outcomes, --> and shareholder meetings via XBRL harvester.
 - **JSON Output**: `--json` flag for agent parsing.
 
 ## [done] ValuePickr Forum Export (v4.1)
@@ -22,6 +22,7 @@ Full programmatic access via `knowledgelm`### cli.py
 Export entire ValuePickr (Discourse) threads for offline reading and AI analysis.
 - **Source**: ValuePickr Forum (JSON API).
 - **Format**: Clean PDF with embedded images and charts.
+- **Interfaces**: Available via CLI (`knowledgelm forum`) and Streamlit WebUI (checkbox).
 - **Design Goals**:
     - **Multimodal**: PDF format preserves charts for NotebookLM visual analysis.
     - **High Signal**: Strips usernames, avatars, signatures, and badges. Only retains Dates and Content.
@@ -50,7 +51,7 @@ Export entire ValuePickr (Discourse) threads for offline reading and AI analysis
 Expandable tables with per-row downloads:
 - Change in Personnel (via XBRL)
 - Key announcements (via XBRL)
-- Board Meeting Outcome (via XBRL)
+<!-- - Board Meeting Outcome (via XBRL) -->
 - Shareholder Meetings (via XBRL)
 - Press Releases (legacy filter)
 - Regulation 30 Updates (legacy filter)
@@ -81,7 +82,7 @@ Separation of concerns:
 ## [done] Standardized Folder Structure (v4.2)
 
 Standardized download destinations for better research organization:
-- **NSE Filings**: `_filings` suffix (e.g., `HDFCBANK_filings`).
+- **NSE Filings**: `_sources` suffix (e.g., `HDFCBANK_sources`).
 - **ValuePickr Exports**: `_valuepickr` suffix (e.g., `HDFCBANK_valuepickr`), containing both PDF and references.
 - **Agent Compatibility**: Consistent naming makes it easier for agents to locate sources for NotebookLM.
 
@@ -93,7 +94,7 @@ Download company share issue documents from NSE corporate filings:
 - **API**: 5 NSE endpoints under `/api/corporates/offerdocs/...`, fetched via the `nse` library's session.
 - **Matching**: Symbol-based for Rights, QIP, Schemes; company-name-based (via `equityMetaInfo`) for Offer Docs and Info Memo where symbol fields are unreliable.
 - **ZIP Handling**: Delegated to the `nse` library's native `download_document` which auto-extracts ZIPs.
-- **Output**: `{SYMBOL}_filings/issue_documents/{type}/` subfolder structure.
+- **Output**: `{SYMBOL}_sources/share_issuance_docs/{type}/` subfolder structure.
 
 ## [done] Resignations Query CLI (v5.0)
 
@@ -117,3 +118,10 @@ Overhaul of the XBRL processing pipeline to use native parsing:
 - naming needs to be better for the docs. it's still terribly random
 - **3P info skill/code:** TJI finance as knowledge base source - ask AI to figure out and visit the tijori finance website for the stock, go to the knowledge base, get all the links, send the VP link to the CLI and add the rest of the links directly. Maybe write a skill for this instead of CLI or code. write a skill for 3P filings and make them optional to add. nest the skill such that we can give various temperature levels - operator interviews to public sentiment analysis. offer events as a separate input to understand what's going on in the last few years. then we can take all the announcements instead of struggling for enforcement.
 - **RPT upgrade** - replace RPT with RPT XBRL along with integrated filing-financials/governance with selective fields exposed
+
+## Pending Fixes
+- cli docstrings as well as organisation are terrible. need fixes
+- provide markdown option in CLI that uses the library to iterate through all the .pdfs and convert to .md
+- performance audit
+- security audit, especially input validation
+- skill is way out of date

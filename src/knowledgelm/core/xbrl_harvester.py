@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 XBRL_TYPES = {
     "Reg30": "Restructuring (Reg 30)",
     "announcements": "Change in Personnel",
-    "outcome": "Board Meeting Outcomes",
+    # "outcome": "Board Meeting Outcomes",
     "fundRaising": "Issuance of Securities",
     "agr": "Agreements/Contracts",
     "award": "Orders & Contracts",
@@ -38,7 +38,7 @@ XBRL_CATEGORIES = {
         "CIRP",
         "annOts",
     ],
-    "Board Meeting Outcome": ["outcome"],
+    # "Board Meeting Outcome": ["outcome"],
     "Shareholder Meetings": ["shm"],
 }
 

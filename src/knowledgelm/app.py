@@ -10,6 +10,8 @@ from knowledgelm.config import (
     DOWNLOAD_CATEGORIES_CONFIG,
 )
 from knowledgelm.core.service import KnowledgeService
+from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
+from pathlib import Path
 
 # Configure logging — route to file, keep terminal clean
 logging.basicConfig(
@@ -47,7 +49,7 @@ with st.container(border=True):
     with col_h4:
         folder_name_input = st.text_input(
             "Output Folder",
-            value=f"{symbol}_filings",
+            value=f"{symbol}_sources",
             help="Name of the folder to create. Do NOT include paths (e.g., 'C:\\').",
         )
 
@@ -82,8 +84,14 @@ with st.container(border=True):
         # XBRL-based categories grouped logically on the right
         dl_personnel = st.checkbox("Change in Personnel", value=True)
         dl_key_ann = st.checkbox("Key announcements", value=True)
-        dl_board_outcome = st.checkbox("Board Meeting Outcomes", value=True)
+        # dl_board_outcome = st.checkbox("Board Meeting Outcomes", value=True)
         dl_shm = st.checkbox("Shareholder Meetings", value=True)
+
+    st.write("")
+    dl_forum = st.checkbox("ValuePickr Thread", value=False)
+    forum_url = ""
+    if dl_forum:
+        forum_url = st.text_input("Thread URL", placeholder="https://forum.valuepickr.com/t/.../1234")
 
 # --- Main Action Button ---
 st.write("") # Spacer
@@ -106,7 +114,7 @@ if st.button("Download", type="primary", use_container_width=False):
                 "download_issue_documents": dl_issue_docs,
                 "download_personnel": dl_personnel,
                 "download_key_announcements": dl_key_ann,
-                "download_board_outcome": dl_board_outcome,
+                # "download_board_outcome": dl_board_outcome,
                 "download_shm": dl_shm,
             }
 
@@ -118,6 +126,25 @@ if st.button("Download", type="primary", use_container_width=False):
                 options=options,
                 annual_reports_all_mode=annual_reports_download_all,
             )
+
+            if dl_forum and forum_url:
+                client = ForumClient()
+                thread_data = client.get_full_thread(forum_url)
+                
+                output_dir = Path.cwd() / folder_name_input / "forum_valuepickr"
+                output_dir.mkdir(parents=True, exist_ok=True)
+                output_path = output_dir / "forum_thread.pdf"
+                
+                generator = PDFGenerator()
+                generator.generate_thread_pdf(thread_data, output_path)
+                
+                ref_extractor = ReferenceExtractor()
+                ref_content = ref_extractor.extract_references(thread_data)
+                ref_path = output_dir / "forum_links.md"
+                with open(ref_path, "w", encoding="utf-8") as f:
+                    f.write(ref_content)
+                
+                category_counts["ValuePickr Thread"] = 1
 
             st.session_state.data = data
             st.session_state.category_counts = category_counts
@@ -136,6 +163,9 @@ if st.button("Download", type="primary", use_container_width=False):
                 count = category_counts.get(label, 0)
                 if count > 0:
                     processed_counts.append(f"• {pluralize(count, label)}")
+            
+            if category_counts.get("ValuePickr Thread", 0) > 0:
+                processed_counts.append("• 1 ValuePickr Thread")
 
             summary_header = f"Successfully processed **{symbol}** filings in `{folder_name_input}`."
             if processed_counts:

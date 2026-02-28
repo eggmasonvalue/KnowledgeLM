@@ -9,7 +9,7 @@ Usage:
     knowledgelm download SYMBOL --from DATE --to DATE
     knowledgelm personnel SYMBOL --from DATE --to DATE
     knowledgelm key-announcements SYMBOL --from DATE --to DATE
-    knowledgelm board-outcome SYMBOL --from DATE --to DATE
+    # knowledgelm board-outcome SYMBOL --from DATE --to DATE
     knowledgelm shareholder-meetings SYMBOL --from DATE --to DATE
     knowledgelm list-categories
     knowledgelm forum URL
@@ -88,7 +88,7 @@ def main():
     "Run 'knowledgelm list-categories' to see available options.",
 )
 @click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
 )
 @click.option(
     "--annual-reports-all",
@@ -132,7 +132,7 @@ def download(
         sys.exit(1)
 
     # Determine output directory
-    folder_name = output if output else f"{symbol.upper()}_filings"
+    folder_name = output if output else f"{symbol.upper()}_sources"
 
     # Build options dict
     if categories.lower() == "all":
@@ -231,7 +231,7 @@ def list_categories():
     "--output",
     "-o",
     default=None,
-    help="Output directory path. Defaults to ./<SYMBOL>_valuepickr/",
+    help="Output directory path. Defaults to ./misc_sources/forum_valuepickr/ if no symbol is provided.",
 )
 def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
     """Download a ValuePickr forum thread as a clean PDF.
@@ -254,18 +254,18 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
 
         # 2. Determine output directory
         if symbol:
-            folder_name = f"{symbol.upper()}_valuepickr"
+            base_folder = f"{symbol.upper()}_sources"
         else:
-            folder_name = f"{slug}_valuepickr"
+            base_folder = "misc_sources"
 
         if not output:
-            output_dir = Path.cwd() / folder_name
+            output_dir = Path.cwd() / base_folder / "forum_valuepickr"
         else:
-            output_dir = Path(output)
+            output_dir = Path(output) / "forum_valuepickr"
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        output_path = output_dir / f"{slug}_valuepickr_forum.pdf"
+        output_path = output_dir / "forum_thread.pdf"
 
         # 3. Generate PDF
         logger.info(f"Generating PDF with {len(thread_data['posts'])} posts...")
@@ -279,7 +279,7 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
         ref_extractor = ReferenceExtractor()
         ref_content = ref_extractor.extract_references(thread_data)
 
-        ref_path = output_dir / f"{slug}_ValuePickr_references.md"
+        ref_path = output_dir / "forum_links.md"
         with open(ref_path, "w", encoding="utf-8") as f:
             f.write(ref_content)
 
@@ -310,7 +310,7 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
 @click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
 @click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
 @click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
 )
 def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query board-level personnel changes via XBRL.
@@ -329,23 +329,23 @@ def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str]):
 @click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
 @click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
 @click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
 )
 def key_announcements(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query key corporate announcements (Reg 30, fund raising, etc.) via XBRL."""
     _query_xbrl(symbol, "key_announcements", from_date, to_date, output)
 
 
-@main.command("board-outcome")
-@click.argument("symbol")
-@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
-@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
-@click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
-)
-def board_outcome(symbol: str, from_date: str, to_date: str, output: Optional[str]):
-    r"""Query board meeting outcomes via XBRL."""
-    _query_xbrl(symbol, "board_outcome", from_date, to_date, output)
+# @main.command("board-outcome")
+# @click.argument("symbol")
+# @click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
+# @click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
+# @click.option(
+#     "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
+# )
+# def board_outcome(symbol: str, from_date: str, to_date: str, output: Optional[str]):
+#     r"""Query board meeting outcomes via XBRL."""
+#     _query_xbrl(symbol, "board_outcome", from_date, to_date, output)
 
 
 @main.command("shareholder-meetings")
@@ -353,7 +353,7 @@ def board_outcome(symbol: str, from_date: str, to_date: str, output: Optional[st
 @click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
 @click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
 @click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_filings/"
+    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
 )
 def shareholder_meetings(symbol: str, from_date: str, to_date: str, output: Optional[str]):
     r"""Query shareholder meeting announcements via XBRL."""
@@ -372,7 +372,7 @@ def _query_xbrl(symbol: str, category: str, from_date: str, to_date: str, output
         sys.exit(1)
 
     # Determine output directory (same logic as download)
-    folder_name = output if output else f"{symbol.upper()}_filings"
+    folder_name = output if output else f"{symbol.upper()}_sources"
     config = DOWNLOAD_CATEGORIES_CONFIG[category]
     options = {cfg["enabled_arg"]: (c == category) for c, cfg in DOWNLOAD_CATEGORIES_CONFIG.items()}
 
@@ -389,7 +389,15 @@ def _query_xbrl(symbol: str, category: str, from_date: str, to_date: str, output
         label = config["label"]
         count = counts.get(label, 0)
         output_dir = Path.cwd() / folder_name
-        json_path = output_dir / f"{category}_details.json"
+        
+        if category == "personnel":
+            json_path = output_dir / "personnel_changes.json"
+        elif category == "key_announcements":
+            json_path = output_dir / "key_announcements.json"
+        elif category == "shm":
+            json_path = output_dir / "shareholder_meetings" / "shm_details.json"
+        else:
+            json_path = output_dir / f"{category}_details.json"
 
         result = {
             "success": True,

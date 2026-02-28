@@ -380,10 +380,24 @@ class KnowledgeService:
         if cat_key == "shm":
             self._enrich_shm_records(records, symbol, adapter, download_dir)
 
+        # Filter output fields based on configuration
+        output_keys = DOWNLOAD_CATEGORIES_CONFIG.get(cat_key, {}).get("output_keys")
+        if output_keys:
+            records = [{k: r[k] for k in output_keys if k in r} for r in records]
+
         # Save to JSON
         import json
 
-        output_file = download_dir / f"{cat_key}_details.json"
+        if cat_key == "personnel":
+            output_file = download_dir / "personnel_changes.json"
+        elif cat_key == "key_announcements":
+            output_file = download_dir / "key_announcements.json"
+        elif cat_key == "shm":
+            shm_dir = download_dir / "shareholder_meetings"
+            shm_dir.mkdir(parents=True, exist_ok=True)
+            output_file = shm_dir / "shm_details.json"
+        else:
+            output_file = download_dir / f"{cat_key}_details.json"
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(records, f, indent=2)
 
@@ -507,7 +521,7 @@ class KnowledgeService:
                 logger.info(f"Found matching PDF: {target_pdf_url}")
 
                 # Download to shm folder instead of temp
-                shm_dir = download_dir / "shm_notices"
+                shm_dir = download_dir / "shareholder_meetings" / "shm_notices"
                 shm_dir.mkdir(parents=True, exist_ok=True)
 
                 if adapter.download_document(target_pdf_url, shm_dir):

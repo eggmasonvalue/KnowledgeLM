@@ -2,16 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+- **ValuePickr Forum Support in WebUI**: Added UI elements to `app.py` for downloading ValuePickr forum threads, establishing feature parity with the CLI. Included a new checkbox and URL input under the "Select Filing Categories" section.
+- **Configurable JSON Output**: Introduced an `output_keys` configuration option in `config.py` for XBRL categories (`personnel`, `key_announcements`, and `shm`). The saved JSON files for these categories now only contain high-value fields (e.g., `xbrl_data`, `broadcastDateTime`, `local_pdf_path`) by default, rather than dumping all raw NSE metadata. This significantly improves data density for target LLMs like NotebookLM.
+
 ### Fixed
 - **Robust XBRL Resolution**: Updated `nse-xbrl-parser` to fix "Shadowed XSD" and "Relative Path Resolution" errors. This enables successful parsing of Swiggy and other recent filings that were previously falling back to the internal API due to missing schema definitions.
 - Created `scripts/build_golden_taxonomy.py` to crawl the NSE site, download all historical taxonomy zips, and automatically extract them (including nested zips) into a unified `golden_taxonomy_v1` directory.
 - Integrated XBRL harvester for granular announcement data.
-- New announcement categories: "Change in Personnel", "Key announcements", "Board Meeting Outcome", and "Shareholder Meetings".
-- Structured XBRL query support in CLI (`personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`).
+- New announcement categories: "Change in Personnel", "Key announcements", <!-- "Board Meeting Outcome", --> and "Shareholder Meetings".
+- Structured XBRL query support in CLI (`personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`).
 - Enhanced Streamlit UI with XBRL category selection and detailed views.
 - **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
 
 ### Changed
+- **New Output Directory Structure**: Renamed the default download directory from `{SYMBOL}_filings` to `{SYMBOL}_sources`. Restructured the default hierarchy and filenames for XBRL and issue document downloads (e.g., `issue_documents` to `share_issuance_docs`, `personnel_changes.json`, `shareholder_meetings/shm_notices/`).
 - **Screener Only for Credit Ratings**: Disabled the NSE announcements fallback for credit ratings. Screener.in is now the sole source to ensure high-fidelity records and PDF conversion.
 - **Lazy Loading Announcements**: Optimized `process_request` to lazy-load the general announcements from the NSE API. This significantly speeds up downloads when only category-specific or XBRL data is requested.
 - Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
