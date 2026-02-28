@@ -230,34 +230,49 @@ class KnowledgeService:
     def _process_credit_ratings(
         self, symbol: str, get_announcements_func: callable, adapter: NSEAdapter, root_dir: Path
     ) -> int:
-        # 1. Try Screener (Primary)
+        """Fetch and download credit ratings from Screener.in.
+
+        Screener.in is used as the sole source for credit ratings as it provides
+        high-fidelity PDF conversion and historical records.
+
+        Args:
+            symbol: Stock symbol.
+            get_announcements_func: Callable to get general announcements (unused, kept for signature compatibility).
+            adapter: Initialized NSEAdapter.
+            root_dir: Root download directory.
+
+        Returns:
+            Number of documents downloaded.
+        """
+        # 1. Try Screener (Sole Source)
         cat_folder = root_dir / "credit_rating"  # Matches config constant value
         cat_folder.mkdir(parents=True, exist_ok=True)
 
         primary_count = download_credit_ratings_from_screener(symbol, root_dir)
-        if primary_count > 0:
-            return primary_count
+        return primary_count
 
-        logger.info("Screener returned 0 credit ratings. Trying NSE announcements fallback...")
+        # NOTE: NSE announcements fallback has been disabled as per user request.
+        # Screener.in is now the sole source for credit ratings.
+        # logger.info("Screener returned 0 credit ratings. Trying NSE announcements fallback...")
 
-        # 2. Fallback to NSE announcements
-        count = 0
-        downloaded_files = set(f.name for f in cat_folder.glob("*"))
+        # # 2. Fallback to NSE announcements
+        # count = 0
+        # downloaded_files = set(f.name for f in cat_folder.glob("*"))
 
-        for item in get_announcements_func():
-            if self._matches_filter("credit_rating", item):
-                url = item.get("attchmntFile")
-                if not url:
-                    continue
-                filename = url.split("/")[-1]
-                if filename in downloaded_files:
-                    continue
+        # for item in get_announcements_func():
+        #     if self._matches_filter("credit_rating", item):
+        #         url = item.get("attchmntFile")
+        #         if not url:
+        #             continue
+        #         filename = url.split("/")[-1]
+        #         if filename in downloaded_files:
+        #             continue
 
-                logger.info(f"Downloading credit rating from NSE: {filename}")
-                if adapter.download_document(url, cat_folder):
-                    count += 1
-                    downloaded_files.add(filename)
-        return count
+        #         logger.info(f"Downloading credit rating from NSE: {filename}")
+        #         if adapter.download_document(url, cat_folder):
+        #             count += 1
+        #             downloaded_files.add(filename)
+        # return count
 
     def _process_issue_documents(
         self,
@@ -378,9 +393,6 @@ class KnowledgeService:
         self, records: List[Dict], symbol: str, adapter: NSEAdapter, download_dir: Path
     ):
         """Enrich SHM records with resolution details from PDF notices."""
-        from knowledgelm.core.pdf_parser import PDFResolutionExtractor
-
-        extractor = PDFResolutionExtractor()
 
         # We need general announcements to find the PDF.
         # Since we have a list of records, we can determine the date range needed.
@@ -505,24 +517,26 @@ class KnowledgeService:
 
                     if pdf_path.exists():
                         try:
-                            resolutions, raw_text = extractor.extract_resolutions(pdf_path)
+                            # Convert to markdown
+                            md_path = pdf_path.with_suffix(".md")
+                            try:
+                                from markitdown import MarkItDown
+                                markitdown = MarkItDown()
+                                result = markitdown.convert(str(pdf_path))
+                                with open(md_path, "w", encoding="utf-8") as f:
+                                    f.write(result.text_content)
+                                record["local_markdown_path"] = str(md_path.absolute())
+                            except Exception as e:
+                                logger.error(f"Failed to convert PDF to Markdown: {e}")
 
-                            # Save raw text
-                            txt_path = pdf_path.with_suffix(".txt")
-                            with open(txt_path, "w", encoding="utf-8") as f:
-                                f.write(raw_text)
-
-                            record["resolutions"] = resolutions
                             record["pdf_url"] = target_pdf_url
                             record["local_pdf_path"] = str(pdf_path.absolute())
-                            record["local_text_path"] = str(txt_path.absolute())
                             record["note"] = (
-                                "Resolutions were automatically extracted. "
-                                "Please refer to the local PDF or text file for verification."
+                                "Please refer to the local PDF or markdown file for verification."
                             )
-                            logger.info(f"Extracted {len(resolutions)} resolutions.")
+                            logger.info("Successfully processed PDF to markdown.")
                         except Exception as e:
-                            logger.error(f"Failed to extract resolutions: {e}")
+                            logger.error(f"Failed to process PDF: {e}")
                     else:
                         logger.error("Downloaded PDF not found.")
             else:
