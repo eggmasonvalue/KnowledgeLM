@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-### Added
+### Fixed
+- **Robust XBRL Resolution**: Updated `nse-xbrl-parser` to fix "Shadowed XSD" and "Relative Path Resolution" errors. This enables successful parsing of Swiggy and other recent filings that were previously falling back to the internal API due to missing schema definitions.
 - Created `scripts/build_golden_taxonomy.py` to crawl the NSE site, download all historical taxonomy zips, and automatically extract them (including nested zips) into a unified `golden_taxonomy_v1` directory.
 - Integrated XBRL harvester for granular announcement data.
 - New announcement categories: "Change in Personnel", "Key announcements", "Board Meeting Outcome", and "Shareholder Meetings".
@@ -11,6 +12,7 @@
 - **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
 
 ### Changed
+- **Screener Only for Credit Ratings**: Disabled the NSE announcements fallback for credit ratings. Screener.in is now the sole source to ensure high-fidelity records and PDF conversion.
 - **Lazy Loading Announcements**: Optimized `process_request` to lazy-load the general announcements from the NSE API. This significantly speeds up downloads when only category-specific or XBRL data is requested.
 - Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
 - Upgraded `nse` dependency to `nse[server]>=2.1.0`.
@@ -98,7 +100,7 @@
 - **External APIs**:
   - **NSE India**: Primary source for filenames and filing metadata (via `NSEAdapter`).
   - **NSE XBRL API**: Source for granular, structured corporate announcements (via `NSEXBRLHarvester`).
-  - **Screener.in**: Fallback source for credit rating documents.
+  - **Screener.in**: Sole source for credit rating documents.
   - **ValuePickr**: Source for forum thread data and discussions.
 
 ## [4.0.0] - 2026-02-08
@@ -192,7 +194,7 @@
 
 ### Features
 - Batch download NSE announcements by category
-- Credit rating dual-source (screener.in primary, NSE fallback)
+- Credit rating extraction from Screener.in
 - Individual filing views (Resignations, Reg 30, Press Releases)
 - Annual report download (date range or all)
 - Streamlit UI with status feedback
