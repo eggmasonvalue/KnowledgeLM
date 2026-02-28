@@ -1,10 +1,11 @@
-import pytest
 import json
-import logging
 from pathlib import Path
+from unittest.mock import patch
+
 from click.testing import CliRunner
-from unittest.mock import patch, MagicMock
+
 from knowledgelm.cli import main
+
 
 def test_download_help():
     """Test help message for download command."""

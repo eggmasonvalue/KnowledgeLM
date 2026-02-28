@@ -1,5 +1,5 @@
-import logging
 import io
+import logging
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -87,7 +87,7 @@ class NSEAdapter:
             filename = url.split("/")[-1]
             if not filename:
                 filename = "document_data"
-            
+
             # 1. Handle ZIP
             if "zip" in content_type or filename.lower().endswith(".zip"):
                 try:
@@ -96,7 +96,7 @@ class NSEAdapter:
                     return True
                 except zipfile.BadZipFile:
                     logger.warning(f"File from {url} claimed to be ZIP but is not. Saving raw.")
-            
+
             # 2. Handle Direct File
             output_full_path = dest_path / filename
             with open(output_full_path, "wb") as f:
