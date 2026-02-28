@@ -44,7 +44,7 @@ wheels = [
 
 [[package]]
 name = "arelle-release"
-version = "2.38.15"
+version = "2.38.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bottle" },
@@ -63,9 +63,9 @@ dependencies = [
     { name = "truststore" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/48/23cf8c9d14f22d51f421f0c2bebbd89827a91d98f87b13e119784b1f61d4/arelle_release-2.38.15.tar.gz", hash = "sha256:b3d6b080a944d6f64985a02fc366f31fbae1205ca96c10f2b6da8747ececd7f8", size = 5315370, upload-time = "2026-02-19T18:32:54.328Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/f9/52398e090f0668215d2684841d90e12a8547618ab35466e45820ea36c98b/arelle_release-2.38.17.tar.gz", hash = "sha256:1530d5e473bd4d00296e7480512de148cbaf85af976e8948b623cb2496522c6d", size = 5316295, upload-time = "2026-02-24T04:35:59.665Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/58/fc1d2d883fbb6b7448096d735cb3dcc4516ee7a287fac13cd491f3d7863d/arelle_release-2.38.15-py3-none-any.whl", hash = "sha256:0ce065ad1dee1c75d9b36aa0b656bfba998f3a877a01ee3d805335d7c792f896", size = 5722807, upload-time = "2026-02-19T18:32:51.244Z" },
+    { url = "https://files.pythonhosted.org/packages/87/b8/b61c73c3d9dc4c5b56171b625bbc6405f2db95462663b0f0adf7d20d4ac6/arelle_release-2.38.17-py3-none-any.whl", hash = "sha256:2fc8c0c6df38c992a8cf84b64b2daab4b761e8966f02e264dd64b21669d4546f", size = 5724346, upload-time = "2026-02-24T04:35:57.497Z" },
 ]
 
 [[package]]
@@ -604,10 +604,10 @@ name = "knowledgelm"
 version = "5.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "arelle-release" },
     { name = "beautifulsoup4" },
     { name = "click" },
     { name = "nse", extra = ["server"] },
+    { name = "nse-xbrl-parser" },
     { name = "pandas" },
     { name = "pdfplumber" },
     { name = "requests" },
@@ -630,10 +630,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arelle-release", specifier = ">=2.38.15" },
     { name = "beautifulsoup4" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "nse", extras = ["server"], specifier = ">=2.1.0" },
+    { name = "nse-xbrl-parser", editable = "../nse-xbrl-parser" },
     { name = "pandas" },
     { name = "pdfplumber", specifier = ">=0.11.9" },
     { name = "pytest", marker = "extra == 'dev'" },
@@ -836,6 +836,28 @@ wheels = [
 [package.optional-dependencies]
 server = [
     { name = "httpx", extra = ["http2"] },
+]
+
+[[package]]
+name = "nse-xbrl-parser"
+version = "0.1.0"
+source = { editable = "../nse-xbrl-parser" }
+dependencies = [
+    { name = "arelle-release" },
+    { name = "lxml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "arelle-release", specifier = ">=2.38.17" },
+    { name = "lxml", specifier = ">=5.3.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "ruff", specifier = ">=0.15.4" },
 ]
 
 [[package]]

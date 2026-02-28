@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Created `scripts/build_golden_taxonomy.py` to crawl the NSE site, download all historical taxonomy zips, and automatically extract them (including nested zips) into a unified `golden_taxonomy_v1` directory.
 - Integrated XBRL harvester for granular announcement data.
 - New announcement categories: "Change in Personnel", "Key announcements", "Board Meeting Outcome", and "Shareholder Meetings".
 - Structured XBRL query support in CLI (`personnel`, `key-announcements`, `board-outcome`, `shareholder-meetings`).
