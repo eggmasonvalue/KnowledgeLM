@@ -10,6 +10,8 @@
 
 ### Changed
 - Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
+- Upgraded `nse` dependency to `nse[server]>=2.1.0`.
+- Enabled `server=True` in `NSE` initialization for improved reliability in server environments.
 
 ## [5.0.0] - 2026-02-15
 

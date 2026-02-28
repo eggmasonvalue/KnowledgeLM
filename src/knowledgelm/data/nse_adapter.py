@@ -22,7 +22,7 @@ class NSEAdapter:
         self.download_folder = download_folder
         # Suppress initial print if any
         with redirect_output_to_logger(logger):
-            self.nse = NSE(str(download_folder))
+            self.nse = NSE(str(download_folder), server=True)
 
     def get_announcements(
         self, symbol: str, from_date: datetime, to_date: datetime
