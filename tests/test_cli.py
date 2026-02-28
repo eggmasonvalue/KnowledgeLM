@@ -131,54 +131,6 @@ def test_list_categories_json():
     data = json.loads(result.output)
     assert "transcripts" in data
 
-def test_list_files():
-    """Test listing files in a directory."""
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        p = Path("test_dir")
-        p.mkdir()
-        (p / "file1.pdf").touch()
-        (p / "file2.txt").touch()
-
-        result = runner.invoke(main, ["list-files", str(p)])
-        assert result.exit_code == 0
-
-        log_file = Path("knowledgelm.log")
-        assert log_file.exists()
-        content = log_file.read_text()
-        assert "file1.pdf" in content
-        assert "file2.txt" in content
-
-def test_list_files_exclude():
-    """Test listing files with exclusion."""
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        p = Path("test_dir")
-        p.mkdir()
-        (p / "file1.pdf").touch()
-        (p / "file2.pkl").touch()
-
-        result = runner.invoke(main, ["list-files", str(p), "--exclude", ".pkl"])
-        assert result.exit_code == 0
-
-        log_file = Path("knowledgelm.log")
-        content = log_file.read_text()
-        assert "file1.pdf" in content
-        assert "file2.pkl" not in content
-
-def test_list_files_json():
-    """Test listing files as JSON."""
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        p = Path("test_dir")
-        p.mkdir()
-        (p / "file1.pdf").touch()
-
-        result = runner.invoke(main, ["list-files", str(p), "--json"])
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data["file_count"] == 1
-        assert data["files"][0]["name"] == "file1.pdf"
 
 @patch("knowledgelm.cli.ForumClient")
 @patch("knowledgelm.cli.PDFGenerator")

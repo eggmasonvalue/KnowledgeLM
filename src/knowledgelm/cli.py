@@ -12,7 +12,6 @@ Usage:
     knowledgelm board-outcome SYMBOL --from DATE --to DATE
     knowledgelm shareholder-meetings SYMBOL --from DATE --to DATE
     knowledgelm list-categories
-    knowledgelm list-files DIRECTORY --json
     knowledgelm forum URL
 """
 
@@ -233,60 +232,6 @@ def list_categories(output_json: bool):
         logger.info("Available categories:")
         for cat, info in categories.items():
             logger.info(f"  {cat}: {info['label']}")
-
-
-@main.command("list-files")
-@click.argument("directory", type=click.Path(exists=True))
-@click.option("--json", "output_json", is_flag=True, help="Output as JSON.")
-@click.option(
-    "--exclude",
-    multiple=True,
-    default=[".pkl"],
-    help="File extensions to exclude. Defaults to .pkl",
-)
-def list_files(directory: str, output_json: bool, exclude: tuple):
-    r"""List downloaded files in a directory.
-
-    Useful for NotebookLM integration - outputs file paths that can be
-    added as sources to a notebook.
-
-    \b
-    Example:
-        knowledgelm list-files ./HDFCBANK_filings --json
-    """
-    configure_logging()
-
-    dir_path = Path(directory)
-    files = []
-
-    for file_path in dir_path.rglob("*"):
-        if file_path.is_file():
-            # Check exclusions
-            if any(file_path.suffix.lower() == ext.lower() for ext in exclude):
-                continue
-            files.append(
-                {
-                    "path": str(file_path.absolute()),
-                    "name": file_path.name,
-                    "category": file_path.parent.name if file_path.parent != dir_path else "root",
-                    "size_bytes": file_path.stat().st_size,
-                }
-            )
-
-    result = {
-        "directory": str(dir_path.absolute()),
-        "file_count": len(files),
-        "files": files,
-    }
-
-    if output_json:
-        logger.info(f"Producing JSON file list for {directory}")
-        click.echo(json.dumps(result, indent=2))
-    else:
-        logger.info(f"Files in {directory}:")
-        for f in files:
-            logger.info(f"  [{f['category']}] {f['name']}")
-        logger.info(f"\nTotal: {len(files)} files")
 
 
 @main.command("forum")

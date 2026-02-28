@@ -56,10 +56,6 @@ knowledgelm download SWIGGY --from 2020-01-01 --to 2025-12-31 --categories issue
 
 # Export forum thread
 knowledgelm forum "https://forum.valuepickr.com/t/hdfc-bank-limited/123" --symbol HDFCBANK
-
-# Process for NotebookLM
-knowledgelm list-files ./HDFCBANK_filings --json
-knowledgelm list-files ./HDFCBANK_valuepickr --json
 ```
 
 ### Web UI

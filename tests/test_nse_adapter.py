@@ -12,7 +12,7 @@ def test_init(mock_nse):
     """Test initialization of NSEAdapter."""
     path = Path("foo")
     adapter = NSEAdapter(path)
-    mock_nse_module.NSE.assert_called_with("foo")
+    mock_nse_module.NSE.assert_called_with("foo", server=True)
 
 def test_get_announcements_success(mock_nse):
     """Test successful retrieval of announcements."""
