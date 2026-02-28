@@ -46,8 +46,16 @@ If you prefer to use the tool directly from your terminal:
 ### CLI Usage
 
 ```bash
-# Install (requires uv)
+# Install from PyPI (Standard usage)
 uv tool install knowledgelm
+
+# Alternatively, for development or installing from source code (.zip/clone):
+unzip knowledgelm-main.zip
+cd knowledgelm-main
+uv tool install .
+
+# To run the development version directly without installing:
+uv run knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
 
 # Download filings
 knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
