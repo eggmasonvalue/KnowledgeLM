@@ -119,32 +119,23 @@ class NSEXBRLHarvester:
         return []
 
     def _fallback_internal_api(self, app_id: str, announcement_type: str) -> Dict[str, Any]:
-        """Fetch parsed details from NSE's internal XBRL API.
-
-        This method acts as a fallback when Arelle parsing fails (e.g., due to missing schemas
-        in the taxonomy package). It hits the NSE endpoint that returns pre-parsed JSON.
-        Note that the keys in this JSON are internal technical keys and not always human-readable.
-
-        Args:
-            app_id: The unique application ID of the filing.
-            announcement_type: The filing type code.
-
-        Returns:
-            A dictionary containing the raw parsed data from the NSE internal API, or an empty dict on failure.
-        """
-        logger.warning(f"Using fallback Internal API for {app_id} ({announcement_type})...")
+        """Fetch parsed details from NSE's internal XBRL API."""
+        logger.warning(f"!!! SWITCHING TO INTERNAL API FALLBACK for {app_id} ({announcement_type}) !!!")
         url = f"{self.adapter.nse.base_url}/XBRL-announcements"
         params = {"type": announcement_type, "appId": app_id}
 
         result = self.adapter.fetch_json(url, params)
         if result:
+            logger.info(f"Fallback successful for {app_id}.")
             return result
+        logger.error(f"Fallback failed for {app_id}.")
         return {}
 
     def _find_schema_ref(self, xbrl_content: bytes) -> Optional[str]:
-        """Extract the schemaRef href from XBRL content using regex.
+        """Find the schemaRef href inside the XBRL instance document.
 
-        Helper method to identify which XSD schema the XBRL instance refers to.
+        Uses robust XML-aware searching to handle namespaces and different
+        formatting of the schemaRef element.
 
         Args:
             xbrl_content: Raw bytes content of the XBRL file.
@@ -153,12 +144,39 @@ class NSEXBRLHarvester:
             The href string (e.g., 'in-capmkt-ent-2023-12-31.xsd') if found, else None.
         """
         try:
-            content_str = xbrl_content.decode("utf-8", errors="ignore")
-            match = re.search(r'schemaRef[^>]*href=["\']([^"\']+)["\']', content_str)
-            if match:
-                return match.group(1)
-        except Exception:
-            pass
+            # We use a simple XML-aware search for the schemaRef tag
+            # to be more robust than regex but faster than full LXML/playwright.
+            import xml.etree.ElementTree as ET
+            from io import BytesIO
+
+            # Standard namespaces often used in XBRL
+            # link:schemaRef is what we're looking for
+            tree = ET.parse(BytesIO(xbrl_content))
+            root = tree.getroot()
+
+            # Find any tag ending in 'schemaRef' (to handle varying prefix namespaces)
+            for elem in root.iter():
+                if elem.tag.endswith("schemaRef"):
+                    # Attributes can also be namespaced, e.g., {http://www.w3.org/1999/xlink}href
+                    # We check for any attribute that ends with 'href'
+                    href = None
+                    for attr_key, attr_val in elem.attrib.items():
+                        if attr_key.endswith("href") or attr_key == "href":
+                            href = attr_val
+                            break
+                    if href:
+                        return href
+
+        except Exception as e:
+            logger.debug(f"XML parsing for schemaRef failed: {e}. Falling back to regex.")
+            # Fallback to regex if XML is malformed or parser fails
+            try:
+                content_str = xbrl_content.decode("utf-8", errors="ignore")
+                match = re.search(r'schemaRef[^>]*href=["\']([^"\']+)["\']', content_str)
+                if match:
+                    return match.group(1)
+            except Exception:
+                pass
         return None
 
     def parse_xbrl(
@@ -199,72 +217,88 @@ class NSEXBRLHarvester:
             final_xbrl_path = temp_dir / "filing.xml"
             xbrl_content = b""
 
-            # 1. Download XBRL XML using Adapter
+            # 1. Download XBRL filing using Adapter
             try:
-                # Download to temp dir
-                if not self.adapter.download_document(xbrl_url, temp_dir):
-                    logger.error(f"Adapter failed to download XBRL: {xbrl_url}")
+                # We use download_and_extract which ensures complete extraction of ZIPs
+                if not self.adapter.download_and_extract(xbrl_url, temp_dir):
+                    logger.error(f"Adapter failed to download/extract XBRL filing: {xbrl_url}")
                     if app_id:
                         return self._fallback_internal_api(app_id, announcement_type)
                     return {}
 
-                # Find the file (name might vary)
-                downloaded_files = list(temp_dir.glob("*.xml"))
-                if not downloaded_files:
-                    logger.error("Downloaded file not found or not XML")
+                # 2. Find the actual XBRL instance (.xml)
+                # Recursively search for .xml files (case-insensitive)
+                downloaded_xmls = []
+                for ext in ["*.xml", "*.XML"]:
+                    downloaded_xmls.extend(list(temp_dir.rglob(ext)))
+                
+                if not downloaded_xmls:
+                    logger.error(f"No XBRL XML found in extracted content: {xbrl_url}")
                     if app_id:
                         return self._fallback_internal_api(app_id, announcement_type)
                     return {}
 
-                # Use the first XML file found
-                actual_file_path = downloaded_files[0]
+                logger.info(f"Found {len(downloaded_xmls)} XML file(s) in download.")
+
+                # Use the most likely XBRL file (usually not ending in -pre/-def/-lab/.xsd)
+                # If there are multiple, we pick the first one that doesn't look like a helper file
+                actual_file_path = None
+                for xml_file in downloaded_xmls:
+                    name = xml_file.name.lower()
+                    # Filter out obvious non-instance files
+                    if not any(x in name for x in ["-pre", "-def", "-lab", "-cal", ".xsd", "schema", "taxonomy"]):
+                        actual_file_path = xml_file
+                        break
+                
+                if not actual_file_path:
+                    actual_file_path = downloaded_xmls[0]
+
+                logger.info(f"Using XBRL instance: {actual_file_path.relative_to(temp_dir)}")
 
                 # Read content for schema detection
                 with open(actual_file_path, "rb") as f:
                     xbrl_content = f.read()
 
-                # Rename to standard name for consistency logic below
+                # Move to a standard sibling-of-taxonomy location in temp_dir
                 shutil.move(actual_file_path, final_xbrl_path)
 
             except Exception as e:
-                logger.error(f"Error downloading/processing XBRL: {e}")
+                logger.error(f"Error processing XBRL filing: {e}")
                 if app_id:
                     return self._fallback_internal_api(app_id, announcement_type)
                 return {}
 
             # 2. Find schemaRef inside the XBRL
             schema_ref = self._find_schema_ref(xbrl_content)
+            logger.info(f"Detected schemaRef: {schema_ref}")
 
             # 3. Setup Taxonomy Environment
-            # We copy the cached taxonomy into the temp dir to allow Arelle to resolve relative paths
-            if taxonomy_dir and taxonomy_dir.exists() and schema_ref:
-                found_schema_dir = None
-                # Search for the specific schema file in the cached taxonomy
-                for root, dirs, files in os.walk(taxonomy_dir):
-                    if schema_ref in files:
-                        found_schema_dir = Path(root)
-                        break
-
-                if found_schema_dir:
-                    try:
-                        # Copy entire taxonomy structure to temp
-                        shutil.copytree(taxonomy_dir, temp_dir / "taxonomy", dirs_exist_ok=True)
-
-                        # Find schema in the temp copy
-                        temp_schema_dir = None
-                        for root, dirs, files in os.walk(temp_dir / "taxonomy"):
-                            if schema_ref in files:
-                                temp_schema_dir = Path(root)
-                                break
-
-                        if temp_schema_dir:
-                            # Move XML file to be a sibling of the schema
-                            # This fixes relative path resolution for XSDs
-                            new_xbrl_path = temp_schema_dir / "filing.xml"
-                            shutil.move(final_xbrl_path, new_xbrl_path)
-                            final_xbrl_path = new_xbrl_path
-                    except Exception as e:
-                        logger.warning(f"Failed to setup taxonomy environment: {e}")
+            # We copy ALL cached taxonomies into the temp dir to provide a "global" pool
+            # of schemas. This is necessary because NSE filings often reference core
+            # schemas that are missing from their specific category ZIP but present in others.
+            try:
+                temp_tax_root = temp_dir / "taxonomy"
+                temp_tax_root.mkdir(parents=True, exist_ok=True)
+                
+                # Copy everything from .taxonomies cache
+                if self.taxonomy_manager.cache_dir.exists():
+                    for item in self.taxonomy_manager.cache_dir.iterdir():
+                        if item.is_dir():
+                            shutil.copytree(item, temp_tax_root, dirs_exist_ok=True)
+                
+                # Find the schema in the merged temp copy (recursive)
+                temp_schemas_in_copy = list(temp_tax_root.rglob(schema_ref))
+                
+                if temp_schemas_in_copy:
+                    temp_schema_dir = temp_schemas_in_copy[0].parent
+                    # Move XML filing to be a sibling of its entry-point schema
+                    new_xbrl_path = temp_schema_dir / "filing.xml"
+                    shutil.move(final_xbrl_path, new_xbrl_path)
+                    final_xbrl_path = new_xbrl_path
+                else:
+                    logger.warning(f"Schema reference {schema_ref} not found in global taxonomy cache. Arelle may fail.")
+            except Exception as e:
+                logger.warning(f"Failed to setup taxonomy environment: {e}")
 
             # 4. Initialize Arelle Controller
             # Use 'logToBuffer' to prevent Arelle from spamming stdout
@@ -303,22 +337,23 @@ class NSEXBRLHarvester:
 
                 # Attempt to get human-readable label
                 if fact.concept is not None:
+                    # Try standard label first
                     lbl = fact.concept.label(lang="en")
-                    if lbl:
-                        label = lbl
-                    else:
+                    if not lbl:
+                        # Try verbose role if standard is missing
                         lbl = fact.concept.label(
                             lang="en",
                             labelrole="http://www.xbrl.org/2003/role/verboseLabel",
                         )
-                        if lbl:
-                            label = lbl
+                    if lbl:
+                        label = lbl
 
-                value = fact.value
-                if value is None:
-                    value = ""
-                parsed_data[label] = value
+                # Store with the best label found (preserve case/spaces for readability)
+                parsed_data[label] = fact.value
 
+            logger.info(f"Successfully parsed {len(parsed_data)} facts from XBRL using Arelle.")
+            
+            # Clean up
             model_xbrl.close()
             cntlr.close()
 

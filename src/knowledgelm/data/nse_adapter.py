@@ -1,4 +1,6 @@
 import logging
+import io
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -29,7 +31,7 @@ class NSEAdapter:
     ) -> List[Dict[str, Any]]:
         """Fetch announcements from NSE."""
         logger.info(
-            f"Fetching announcements for {symbol} ({from_date.date()} to {to_date.date()})..."
+            f"Fetching announcements for {symbol} ({from_date} to {to_date})..."
         )
         try:
             with redirect_output_to_logger(logger):
@@ -49,25 +51,17 @@ class NSEAdapter:
             return {}
 
     def download_document(self, url: str, destination_folder: Path) -> bool:
-        """Download a document using the NSE library's downloader.
-
-        Note: The underlying library might not be secure or robust.
-        Long term, we should replace this with our own requests call.
+        """Download a document using the robust downloader.
+        
+        Alias for download_and_extract to maintain compatibility.
         """
-        logger.info(f"Downloading document: {url}")
-        try:
-            with redirect_output_to_logger(logger):
-                self.nse.download_document(url, destination_folder)
-            return True
-        except Exception as e:
-            logger.error(f"Error downloading document {url}: {e}")
-            return False
+        return self.download_and_extract(url, destination_folder)
 
     def download_and_extract(self, url: str, destination_folder: Path) -> bool:
-        """Download a document, extracting it if it is a ZIP archive.
+        """Download a document, extracting all contents if it is a ZIP archive.
 
-        Delegates to the NSE library's download_document, which natively
-        handles ZIP extraction.
+        This uses the internal NSE session (_req) for authentication but performs
+        its own robust extraction to bypass the library's selective extraction.
 
         Args:
             url: URL of the document to download.
@@ -78,11 +72,39 @@ class NSEAdapter:
         """
         logger.info(f"Downloading and extracting: {url}")
         try:
+            # Ensure we have an absolute Path object and it exists
+            dest_path = Path(destination_folder).absolute()
+            dest_path.mkdir(parents=True, exist_ok=True)
+
             with redirect_output_to_logger(logger):
-                self.nse.download_document(url, destination_folder)
+                response = self.nse._req(url)
+
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch {url}: Status {response.status_code}")
+                return False
+
+            content_type = response.headers.get("Content-Type", "").lower()
+            filename = url.split("/")[-1]
+            if not filename:
+                filename = "document_data"
+            
+            # 1. Handle ZIP
+            if "zip" in content_type or filename.lower().endswith(".zip"):
+                try:
+                    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+                        z.extractall(dest_path)
+                    return True
+                except zipfile.BadZipFile:
+                    logger.warning(f"File from {url} claimed to be ZIP but is not. Saving raw.")
+            
+            # 2. Handle Direct File
+            output_full_path = dest_path / filename
+            with open(output_full_path, "wb") as f:
+                f.write(response.content)
             return True
+
         except Exception as e:
-            logger.error(f"Error downloading document {url}: {e}")
+            logger.error(f"Error during robust download/extract of {url}: {e}")
             return False
 
     def get_issue_documents(self, api_path: str, params: Dict[str, str]) -> List[Dict[str, Any]]:
