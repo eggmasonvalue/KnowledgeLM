@@ -79,7 +79,7 @@ convention = "google"
 testpaths = ["tests"]
 
 [tool.uv.sources]
-nse-xbrl-parser = { path = "../nse-xbrl-parser", editable = true }
+nse-xbrl-parser = { git = "https://github.com/eggmasonvalue/nse-xbrl-parser.git" }
 
 [dependency-groups]
 dev = [

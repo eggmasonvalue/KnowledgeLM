@@ -11,6 +11,7 @@
 - **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
 
 ### Changed
+- **Lazy Loading Announcements**: Optimized `process_request` to lazy-load the general announcements from the NSE API. This significantly speeds up downloads when only category-specific or XBRL data is requested.
 - Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
 - Upgraded `nse` dependency to `nse[server]>=2.1.0`.
 - Enabled `server=True` in `NSE` initialization for improved reliability in server environments.

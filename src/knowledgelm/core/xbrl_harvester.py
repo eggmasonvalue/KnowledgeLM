@@ -1,7 +1,4 @@
 import logging
-import os
-import re
-import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -123,53 +120,6 @@ class NSEXBRLHarvester:
         logger.error(f"Fallback failed for {app_id}.")
         return {}
 
-    def _find_schema_ref(self, xbrl_content: bytes) -> Optional[str]:
-        """Find the schemaRef href inside the XBRL instance document.
-
-        Uses robust XML-aware searching to handle namespaces and different
-        formatting of the schemaRef element.
-
-        Args:
-            xbrl_content: Raw bytes content of the XBRL file.
-
-        Returns:
-            The href string (e.g., 'in-capmkt-ent-2023-12-31.xsd') if found, else None.
-        """
-        try:
-            # We use a simple XML-aware search for the schemaRef tag
-            # to be more robust than regex but faster than full LXML/playwright.
-            import xml.etree.ElementTree as ET
-            from io import BytesIO
-
-            # Standard namespaces often used in XBRL
-            # link:schemaRef is what we're looking for
-            tree = ET.parse(BytesIO(xbrl_content))
-            root = tree.getroot()
-
-            # Find any tag ending in 'schemaRef' (to handle varying prefix namespaces)
-            for elem in root.iter():
-                if elem.tag.endswith("schemaRef"):
-                    # Attributes can also be namespaced, e.g., {http://www.w3.org/1999/xlink}href
-                    # We check for any attribute that ends with 'href'
-                    href = None
-                    for attr_key, attr_val in elem.attrib.items():
-                        if attr_key.endswith("href") or attr_key == "href":
-                            href = attr_val
-                            break
-                    if href:
-                        return href
-
-        except Exception as e:
-            logger.debug(f"XML parsing for schemaRef failed: {e}. Falling back to regex.")
-            # Fallback to regex if XML is malformed or parser fails
-            try:
-                content_str = xbrl_content.decode("utf-8", errors="ignore")
-                match = re.search(r'schemaRef[^>]*href=["\']([^"\']+)["\']', content_str)
-                if match:
-                    return match.group(1)
-            except Exception:
-                pass
-        return None
 
     def parse_xbrl(
         self, xbrl_url: str, announcement_type: str, app_id: Optional[str] = None

@@ -633,7 +633,7 @@ requires-dist = [
     { name = "beautifulsoup4" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "nse", extras = ["server"], specifier = ">=2.1.0" },
-    { name = "nse-xbrl-parser", editable = "../nse-xbrl-parser" },
+    { name = "nse-xbrl-parser", git = "https://github.com/eggmasonvalue/nse-xbrl-parser.git" },
     { name = "pandas" },
     { name = "pdfplumber", specifier = ">=0.11.9" },
     { name = "pytest", marker = "extra == 'dev'" },
@@ -841,23 +841,10 @@ server = [
 [[package]]
 name = "nse-xbrl-parser"
 version = "0.1.0"
-source = { editable = "../nse-xbrl-parser" }
+source = { git = "https://github.com/eggmasonvalue/nse-xbrl-parser.git#0edbf187907c2fbabd487c915842532abba499e2" }
 dependencies = [
     { name = "arelle-release" },
     { name = "lxml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "arelle-release", specifier = ">=2.38.17" },
-    { name = "lxml", specifier = ">=5.3.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "ruff", specifier = ">=0.15.4" },
 ]
 
 [[package]]

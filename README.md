@@ -21,7 +21,7 @@ This skill allows your AI agent to batch download investor materials (transcript
 
 - **Agent-First**: Optimized for LLMs with standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution (primary output is JSON) to preserve the context window.
 - **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
-- **Granular XBRL Parsing**: Extracts fine-grained facts (Personnel Changes, Board Outcomes, Shareholder Meetings) into clean JSON using the professional-grade Arelle parser and a robust global taxonomy caching solution.
+- **Granular XBRL Parsing**: Extracts fine-grained facts (Personnel Changes, Board Outcomes, Shareholder Meetings) into clean JSON using our standalone, highly optimized `nse-xbrl-parser` offline resolution engine.
 - **Issue Documents**: IPO prospectus, rights offers, QIP placements, information memoranda, and scheme documents — unified across 5 NSE endpoints with inconsistent schemas, unreliable metadata, and mixed archive formats so you don't have to be.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.
 - **Credit Rating Dual-Source**: Primary extraction from Screener.in (high-fidelity PDF conversion) with NSE API fallback.

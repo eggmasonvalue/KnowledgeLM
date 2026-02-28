@@ -78,9 +78,15 @@ class KnowledgeService:
         if not nse_adapter.validate_symbol(symbol):
             raise ValueError(f"Symbol '{symbol}' is invalid or not found on NSE.")
 
-        # 2. Fetch Announcements
-        announcements = nse_adapter.get_announcements(symbol, from_date, to_date)
-        logger.info(f"Fetched {len(announcements)} total announcements.")
+        # 2. Lazy Fetch Announcements
+        _cached_announcements = None
+
+        def get_general_announcements() -> List[Dict[str, Any]]:
+            nonlocal _cached_announcements
+            if _cached_announcements is None:
+                _cached_announcements = nse_adapter.get_announcements(symbol, from_date, to_date)
+                logger.info(f"Fetched {len(_cached_announcements)} total announcements.")
+            return _cached_announcements
 
         category_counts = {}
 
@@ -104,7 +110,7 @@ class KnowledgeService:
             # Special Case: Credit Ratings
             if cat_key == "credit_rating":
                 count = self._process_credit_ratings(
-                    symbol, announcements, nse_adapter, download_dir
+                    symbol, get_general_announcements, nse_adapter, download_dir
                 )
                 category_counts[label] = count
                 logger.info(f"Completed {label}: {count} items.")
@@ -138,7 +144,7 @@ class KnowledgeService:
             cat_folder.mkdir(parents=True, exist_ok=True)
 
             count = 0
-            for item in announcements:
+            for item in get_general_announcements():
                 if self._matches_filter(cat_key, item):
                     url = item.get("attchmntFile")
                     if url:
@@ -148,7 +154,7 @@ class KnowledgeService:
             logger.info(f"Completed {label}: {count} items.")
 
         logger.info(f"Processing request for {symbol} complete.")
-        return announcements, category_counts
+        return _cached_announcements or [], category_counts
 
     def _matches_filter(self, category: str, item: Dict[str, Any]) -> bool:
         """Check if an item matches the category filter."""
@@ -222,7 +228,7 @@ class KnowledgeService:
         return count
 
     def _process_credit_ratings(
-        self, symbol: str, announcements: List[Dict[str, Any]], adapter: NSEAdapter, root_dir: Path
+        self, symbol: str, get_announcements_func: callable, adapter: NSEAdapter, root_dir: Path
     ) -> int:
         # 1. Try Screener (Primary)
         cat_folder = root_dir / "credit_rating"  # Matches config constant value
@@ -238,7 +244,7 @@ class KnowledgeService:
         count = 0
         downloaded_files = set(f.name for f in cat_folder.glob("*"))
 
-        for item in announcements:
+        for item in get_announcements_func():
             if self._matches_filter("credit_rating", item):
                 url = item.get("attchmntFile")
                 if not url:
