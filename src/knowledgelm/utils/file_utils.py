@@ -80,28 +80,17 @@ def format_iso_date(date_str: str) -> str:
     return safe_str.replace(" ", "_")
 
 
-def generate_standard_filename(url: str, temporal_str: str, shorthand: str) -> str:
-    """Generate filename based on temporal info and shorthand.
+def generate_standard_filename(temporal_str: str, shorthand: str) -> str:
+    """Generate filename base based on temporal info and shorthand.
     
     Args:
-        url: The original URL (used to extract extension).
         temporal_str: The extracted date string to parse.
         shorthand: The shorthand for the category (e.g., 'AR', 'Transcript').
         
     Returns:
-        The standardized filename like '2024_AR.pdf'.
+        The standardized filename prefix like '2024_AR'.
     """
     iso_date = format_iso_date(temporal_str)
     
-    # Try to extract extension from URL, fallback to .pdf
-    # This won't perfectly handle query params, but URLs from NSE/Screener are usually clean
-    # or handle files without explicit extensions.
-    filename_part = url.split("/")[-1]
-    ext = "pdf"
-    if "." in filename_part:
-        potential_ext = filename_part.split(".")[-1].split("?")[0].lower()
-        if len(potential_ext) in [3, 4] and potential_ext.isalnum():
-            ext = potential_ext
-            
-    return f"{iso_date}_{shorthand}.{ext}"
+    return f"{iso_date}_{shorthand}"
 

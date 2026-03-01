@@ -222,7 +222,7 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
                         date_text = safe_text
 
                 # Construct new filename prefix
-                filename = generate_standard_filename("dummy.pdf", date_text, shorthand)
+                filename = f"{generate_standard_filename(date_text, shorthand)}.pdf"
 
                 # 1. Attempt to resolve ICRA PDF link directly
                 pdf_url = _get_icra_pdf_url(url)

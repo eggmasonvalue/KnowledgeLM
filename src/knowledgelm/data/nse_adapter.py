@@ -95,16 +95,12 @@ class NSEAdapter:
                 logger.error(f"Failed to fetch {url}: Status {response.status_code}")
                 return False
 
-            content_type = response.headers.get("Content-Type", "").lower()
-            if file_name:
-                filename = file_name
-            else:
-                filename = url.split("/")[-1]
-                if not filename:
-                    filename = "document_data"
+            original_filename = url.split("?")[0].split("/")[-1]
+            if not original_filename:
+                original_filename = "document_data"
 
-            # 1. Handle ZIP
-            if "zip" in content_type or filename.lower().endswith(".zip"):
+            # 1. Handle ZIP mirroringnse lib logic
+            if original_filename.lower().endswith(".zip") or original_filename.lower().endswith(".gz"):
                 try:
                     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
                         z.extractall(dest_path)
@@ -113,7 +109,8 @@ class NSEAdapter:
                     logger.warning(f"File from {url} claimed to be ZIP but is not. Saving raw.")
 
             # 2. Handle Direct File
-            output_full_path = dest_path / filename
+            output_filename = file_name if file_name else original_filename
+            output_full_path = dest_path / output_filename
             with open(output_full_path, "wb") as f:
                 f.write(response.content)
             return True

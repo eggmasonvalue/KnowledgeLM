@@ -146,11 +146,8 @@ class KnowledgeService:
                 if self._matches_filter(cat_key, item):
                     url = item.get("attchmntFile")
                     if url:
-                        file_name = generate_standard_filename(
-                            url=url,
-                            temporal_str=item.get("an_dt", ""),
-                            shorthand=config.get("shorthand", cat_key)
-                        )
+                        ext = Path(url.split("?")[0]).suffix or ".pdf"
+                        file_name = f"{generate_standard_filename(item.get('an_dt', ''), config.get('shorthand', cat_key))}{ext}"
                         if nse_adapter.download_and_extract(url, cat_folder, file_name):
                             count += 1
             category_counts[label] = count
@@ -244,7 +241,8 @@ class KnowledgeService:
                         continue
 
                 logger.info(f"Downloading Annual Report for {yr}...")
-                file_name = generate_standard_filename(url, str(yr), shorthand)
+                ext = Path(url.split("?")[0]).suffix or ".pdf"
+                file_name = f"{generate_standard_filename(str(yr), shorthand)}{ext}"
                 if adapter.download_and_extract(url, ar_folder, file_name):
                     count += 1
         return count
@@ -379,7 +377,8 @@ class KnowledgeService:
 
                     # Attempt to extract some temporal info from doc (e.g. fileDate, date_attachmnt)
                     temporal = str(doc.get("fileDate", doc.get("date_attachmnt", "")))
-                    file_name = generate_standard_filename(url, temporal, config.get("shorthand", "IssueDoc"))
+                    ext = Path(url.split("?")[0]).suffix or ".pdf"
+                    file_name = f"{generate_standard_filename(temporal, config.get('shorthand', 'IssueDoc'))}{ext}"
 
                     if adapter.download_and_extract(url, doc_folder, file_name):
                         count += 1
@@ -566,7 +565,8 @@ class KnowledgeService:
                 shm_dir = download_dir / shm_config.get("folder_name", "shareholder_meetings") / "shm_notices"
                 shm_dir.mkdir(parents=True, exist_ok=True)
 
-                file_name = generate_standard_filename(target_pdf_url, xbrl_dt_str, shorthand)
+                ext = Path(target_pdf_url.split("?")[0]).suffix or ".pdf"
+                file_name = f"{generate_standard_filename(xbrl_dt_str, shorthand)}{ext}"
 
                 if adapter.download_and_extract(target_pdf_url, shm_dir, file_name):
                     # The file was saved as file_name
