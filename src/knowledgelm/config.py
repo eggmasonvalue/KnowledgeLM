@@ -2,10 +2,38 @@
 
 # --- Folder configuration moved directly into categories below ---
 
-# --- Constants ---
+# --- System Constants ---
 ANNOUNCEMENTS_JSON_TEMPLATE = "{symbol}_announcements.json"
 
-FILE_EXTENSIONS = {"pdf": ".pdf", "html": ".html", "htm": ".htm"}
+FILE_EXTENSIONS = {"pdf": ".pdf", "html": ".html", "htm": ".htm", "md": ".md"}
+DEFAULT_FILE_EXT = FILE_EXTENSIONS["pdf"]
+
+# --- Timeouts ---
+SCREENER_TIMEOUT = 15
+DEFAULT_REQUEST_TIMEOUT = 30
+
+# --- Date Formats ---
+DATE_FORMAT_YMD = "%Y-%m-%d"
+DATE_FORMAT_DMY_HMS = "%d-%b-%Y %H:%M:%S"
+DATE_FORMAT_DMY_HM = "%d-%b-%Y %H:%M"
+DATE_FORMAT_DMY_DASH = "%d-%m-%Y"
+
+# --- URLs & Endpoints ---
+FORUM_BASE_URL = "https://forum.valuepickr.com"
+SCREENER_BASE_URL = "https://www.screener.in/company/{symbol}/"
+ICRA_BASE_RATING_URL = "https://www.icra.in/Rating/ShowRationalReportFilePdf/{report_id}"
+NSE_XBRL_ENDPOINT = "/XBRL-announcements"
+
+# --- Content Filters ---
+FILTER_ANALYST_MEET = "analysts/institutional investor meet/con. call updates"
+FILTER_INVESTOR_PRESENTATION = "investor presentation"
+FILTER_PRESS_RELEASE = ["press release", "press release (revised)"]
+FILTER_CREDIT_RATING = "credit rating"
+FILTER_RELATED_PARTY_TXNS = ["related party transaction", "related party transactions"]
+
+# --- CSS Selectors ---
+SCREENER_DOCS_SELECTOR = "div.documents.credit-ratings"
+SCREENER_LINKS_SELECTOR = "ul.list-links a[href]"
 
 # --- Download Categories ---
 # Each category has a label, an enabled_arg (for UI/Service mapping), and a filter function.
@@ -132,9 +160,3 @@ ISSUE_DOCS_CONFIG = {
         "symbol_reliable": False,
     },
 }
-
-# --- Screener.in Scraper Config ---
-SCREENER_BASE_URL = "https://www.screener.in/company/{symbol}/"
-SCREENER_TIMEOUT = 15
-SCREENER_DOCS_SELECTOR = "div.documents.credit-ratings"
-SCREENER_LINKS_SELECTOR = "ul.list-links a[href]"

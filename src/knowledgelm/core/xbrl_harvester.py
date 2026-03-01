@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from nse_xbrl_parser import parse_xbrl_file
 
+from knowledgelm.config import NSE_XBRL_ENDPOINT
 from knowledgelm.data.nse_adapter import NSEAdapter
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ class NSEXBRLHarvester:
             A list of dictionaries, where each dictionary represents an announcement
             and contains metadata such as 'appId' and 'attachment'. Returns an empty list on failure.
         """
-        url = f"{self.adapter.nse.base_url}/XBRL-announcements"
+        url = f"{self.adapter.nse.base_url}{NSE_XBRL_ENDPOINT}"
         params = {
             "index": "equities",
             "symbol": symbol,
@@ -118,7 +119,7 @@ class NSEXBRLHarvester:
             Parsed details dictionary, or empty dict on failure.
         """
         logger.warning(f"!!! SWITCHING TO INTERNAL API FALLBACK for {app_id} ({announcement_type}) !!!")
-        url = f"{self.adapter.nse.base_url}/XBRL-announcements"
+        url = f"{self.adapter.nse.base_url}{NSE_XBRL_ENDPOINT}"
         params = {"type": announcement_type, "appId": app_id}
 
         result = self.adapter.fetch_json(url, params)

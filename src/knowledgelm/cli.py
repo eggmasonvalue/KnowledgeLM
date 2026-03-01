@@ -13,7 +13,7 @@ from typing import Optional
 
 import click
 
-from knowledgelm.config import DOWNLOAD_CATEGORIES_CONFIG
+from knowledgelm.config import DATE_FORMAT_YMD, DOWNLOAD_CATEGORIES_CONFIG
 from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
 from knowledgelm.core.service import KnowledgeService
 
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 def parse_date(date_str: str) -> datetime:
     """Parse date string in YYYY-MM-DD format."""
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d")
+        return datetime.strptime(date_str, DATE_FORMAT_YMD)
     except ValueError:
         raise click.BadParameter(f"Invalid date format: {date_str}. Use YYYY-MM-DD.")
 
@@ -275,7 +275,7 @@ def vp(url: str, symbol: Optional[str], output: Optional[str]):
 @main.command("list-datasets")
 def list_datasets():
     """List valid values for the `fetch nse --datasets` parameter.
-    
+
     Output Schema (JSON):
       {
         "datasets": {
@@ -287,13 +287,13 @@ def list_datasets():
       }
     """
     configure_logging()
-    
+
     datasets = {}
     for cat, cfg in DOWNLOAD_CATEGORIES_CONFIG.items():
         datasets[cat] = cfg["label"].title()
         if cfg.get("is_xbrl"):
             datasets[cat] += " (XBRL/JSON)"
-            
+
     result = {"datasets": datasets}
 
     click.echo(json.dumps(result, indent=2))
@@ -311,17 +311,18 @@ def convert():
 def _convert_single_pdf(pdf_path: Path) -> dict:
     """Helper to convert a single PDF using MarkItDown and return stat dict."""
     import time
+
     from markitdown import MarkItDown
-    
+
     start_time = time.time()
     try:
         md_converter = MarkItDown()
         result = md_converter.convert(str(pdf_path))
-        
+
         md_path = pdf_path.with_suffix(".md")
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(result.text_content)
-            
+
         return {
             "success": True,
             "file": pdf_path.name,
@@ -342,10 +343,10 @@ def _convert_single_pdf(pdf_path: Path) -> dict:
 @click.argument("filepath")
 def convert_file(filepath: str):
     """Convert a single PDF file to Markdown.
-    
+
     Inputs:
       filepath : Absolute or relative path to the .pdf file.
-      
+
     Output Schema (JSON):
       {
         "success": true,
@@ -357,27 +358,27 @@ def convert_file(filepath: str):
     """
     configure_logging()
     target_path = Path(filepath)
-    
+
     if dict(target_path.absolute().parts).get(0) == "":
         pass # Handle root correctly on various OS if needed, but Path handles standard cases.
-        
+
     if not target_path.exists():
         msg = f"File not found: {filepath}"
         logger.error(msg)
         click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
-        
+
     if not target_path.is_file() or target_path.suffix.lower() != ".pdf":
         msg = f"Target must be a valid .pdf file. Received: {filepath}"
         logger.error(msg)
         click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
-        
+
     logger.info(f"Converting PDF to Markdown: {target_path.name}")
     result = _convert_single_pdf(target_path)
-    
+
     click.echo(json.dumps(result, indent=2))
-    
+
     if result["success"]:
         logger.info(f"✓ Converted {result['file']} in {result['time_seconds']}s")
     else:
@@ -388,10 +389,10 @@ def convert_file(filepath: str):
 @click.argument("directory")
 def convert_dir(directory: str):
     """Convert all PDF files in a directory to Markdown.
-    
+
     Inputs:
       directory : Absolute or relative path to the directory containing PDFs.
-      
+
     Output Schema (JSON):
       {
         "success": true,
@@ -407,33 +408,33 @@ def convert_dir(directory: str):
     import time
     configure_logging()
     target_dir = Path(directory)
-    
+
     if not target_dir.exists() or not target_dir.is_dir():
         msg = f"Directory not found or invalid: {directory}"
         logger.error(msg)
         click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
-        
+
     pdf_files = list(target_dir.glob("*.pdf"))
     if not pdf_files:
         msg = f"No .pdf files found in directory: {directory}"
         logger.warning(msg)
         click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
-        
+
     logger.info(f"Found {len(pdf_files)} PDFs in {target_dir.name}. Starting conversion...")
-    
+
     start_time = time.time()
     results = []
     success_count = 0
-    
+
     for pdf in pdf_files:
         logger.info(f"Processing: {pdf.name}")
         res = _convert_single_pdf(pdf)
         results.append(res)
         if res["success"]:
             success_count += 1
-            
+
     final_output = {
         "success": success_count > 0,
         "directory": str(target_dir.absolute()),
@@ -442,7 +443,7 @@ def convert_dir(directory: str):
         "total_time_seconds": round(time.time() - start_time, 2),
         "results": results
     }
-    
+
     click.echo(json.dumps(final_output, indent=2))
     logger.info(f"Finished directory conversion. {success_count}/{len(pdf_files)} successful.")
 

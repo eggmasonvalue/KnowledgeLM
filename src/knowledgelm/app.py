@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date
+from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -9,9 +10,8 @@ import streamlit.components.v1 as components
 from knowledgelm.config import (
     DOWNLOAD_CATEGORIES_CONFIG,
 )
-from knowledgelm.core.service import KnowledgeService
 from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
-from pathlib import Path
+from knowledgelm.core.service import KnowledgeService
 
 # Configure logging — route to file, keep terminal clean
 logging.basicConfig(
@@ -130,20 +130,20 @@ if st.button("Download", type="primary", use_container_width=False):
             if dl_forum and forum_url:
                 client = ForumClient()
                 thread_data = client.get_full_thread(forum_url)
-                
+
                 output_dir = Path.cwd() / folder_name_input / "forum_valuepickr"
                 output_dir.mkdir(parents=True, exist_ok=True)
                 output_path = output_dir / "forum_thread.pdf"
-                
+
                 generator = PDFGenerator()
                 generator.generate_thread_pdf(thread_data, output_path)
-                
+
                 ref_extractor = ReferenceExtractor()
                 ref_content = ref_extractor.extract_references(thread_data)
                 ref_path = output_dir / "forum_links.md"
                 with open(ref_path, "w", encoding="utf-8") as f:
                     f.write(ref_content)
-                
+
                 category_counts["ValuePickr Thread"] = 1
 
             st.session_state.data = data
@@ -163,7 +163,7 @@ if st.button("Download", type="primary", use_container_width=False):
                 count = category_counts.get(label, 0)
                 if count > 0:
                     processed_counts.append(f"• {pluralize(count, label)}")
-            
+
             if category_counts.get("ValuePickr Thread", 0) > 0:
                 processed_counts.append("• 1 ValuePickr Thread")
 

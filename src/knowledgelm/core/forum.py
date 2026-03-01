@@ -19,6 +19,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.print_page_options import PrintOptions
 
+from knowledgelm.config import FORUM_BASE_URL
 from knowledgelm.utils.log_utils import redirect_output_to_logger
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 class ForumClient:
     """Client for interacting with the ValuePickr (Discourse) JSON API."""
 
-    BASE_URL = "https://forum.valuepickr.com"
+    BASE_URL = FORUM_BASE_URL
 
     def __init__(self):
         """Initialize the forum client."""
@@ -53,13 +54,13 @@ class ForumClient:
             ValueError: If the URL format is invalid.
         """
         # Match patterns like:
-        # https://forum.valuepickr.com/t/security-and-intelligence-services/20319
-        # https://forum.valuepickr.com/t/security-and-intelligence-services/20319/123
+        # {FORUM_BASE_URL}/t/security-and-intelligence-services/20319
+        # {FORUM_BASE_URL}/t/security-and-intelligence-services/20319/123
         match = re.search(r"/t/([^/]+)/(\d+)", url)
         if not match:
             raise ValueError(
                 f"Invalid ValuePickr URL: {url}. Expected format: "
-                "https://forum.valuepickr.com/t/slug/topic_id"
+                f"{self.BASE_URL}/t/slug/topic_id"
             )
         return match.group(1), int(match.group(2))
 
@@ -427,7 +428,7 @@ class ReferenceExtractor:
                 except ValueError:
                     date_str = created_at
 
-            post_url = f"https://forum.valuepickr.com/t/{slug}/{thread_data.get('id')}/{post_num}"
+            post_url = f"{FORUM_BASE_URL}/t/{slug}/{thread_data.get('id')}/{post_num}"
 
             header = f"## Post #{post_num}"
             if date_str:
@@ -513,7 +514,7 @@ class ReferenceExtractor:
 
                 post_num = post.get("post_number")
                 post_url = (
-                    f"https://forum.valuepickr.com/t/{slug}/{thread_data.get('id')}/{post_num}"
+                    f"{FORUM_BASE_URL}/t/{slug}/{thread_data.get('id')}/{post_num}"
                 )
 
                 md_lines.append(f"## Post #{post_num} ({date_str})")

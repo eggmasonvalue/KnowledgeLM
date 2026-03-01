@@ -117,7 +117,7 @@ def test_download_and_extract_success(mock_nse):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.headers = {"Content-Type": "application/zip"}
-    
+
     # Create a dummy zip file in memory
     import io
     import zipfile
@@ -125,7 +125,7 @@ def test_download_and_extract_success(mock_nse):
     with zipfile.ZipFile(zip_buffer, "w") as zf:
         zf.writestr("test.txt", "content")
     mock_response.content = zip_buffer.getvalue()
-    
+
     mock_nse._req.return_value = mock_response
 
     result = adapter.download_and_extract(url, dest)
