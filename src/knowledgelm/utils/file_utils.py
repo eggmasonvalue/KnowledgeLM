@@ -100,7 +100,7 @@ def generate_standard_filename(url: str, temporal_str: str, shorthand: str) -> s
     ext = "pdf"
     if "." in filename_part:
         potential_ext = filename_part.split(".")[-1].split("?")[0].lower()
-        if potential_ext in ["pdf", "zip", "json"]:
+        if len(potential_ext) in [3, 4] and potential_ext.isalnum():
             ext = potential_ext
             
     return f"{iso_date}_{shorthand}.{ext}"
