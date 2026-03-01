@@ -6,15 +6,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from knowledgelm.config import (
-    ANNUAL_REPORTS_FOLDER,
     DOWNLOAD_CATEGORIES_CONFIG,
     ISSUE_DOCS_CONFIG,
-    ISSUE_DOCS_FOLDER,
 )
 from knowledgelm.core.xbrl_harvester import XBRL_CATEGORIES, NSEXBRLHarvester
 from knowledgelm.data.nse_adapter import NSEAdapter
 from knowledgelm.data.screener_adapter import download_credit_ratings_from_screener
-from knowledgelm.utils.file_utils import get_download_path
+from knowledgelm.utils.file_utils import generate_standard_filename, get_download_path
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +138,7 @@ class KnowledgeService:
 
             # Standard Categories - apply filter and download matching items
 
-            cat_folder = download_dir / cat_key
+            cat_folder = download_dir / config.get("folder_name", cat_key)
             cat_folder.mkdir(parents=True, exist_ok=True)
 
             count = 0
@@ -148,7 +146,9 @@ class KnowledgeService:
                 if self._matches_filter(cat_key, item):
                     url = item.get("attchmntFile")
                     if url:
-                        if nse_adapter.download_document(url, cat_folder):
+                        ext = Path(url.split("?")[0]).suffix or ".pdf"
+                        file_name = f"{generate_standard_filename(item.get('an_dt', ''), config.get('shorthand', cat_key))}{ext}"
+                        if nse_adapter.download_and_extract(url, cat_folder, file_name):
                             count += 1
             category_counts[label] = count
             logger.info(f"Completed {label}: {count} items.")
@@ -190,7 +190,25 @@ class KnowledgeService:
         to_date: datetime,
         all_mode: bool,
     ) -> int:
-        ar_folder = root_dir / ANNUAL_REPORTS_FOLDER
+        """Fetch and download annual reports for the given symbol.
+
+        Filters reports based on the provided date range unless `all_mode` is True.
+
+        Args:
+            symbol: Stock symbol.
+            adapter: Initialized NSEAdapter instance.
+            root_dir: Root download directory for this symbol.
+            from_date: Start date for filtering.
+            to_date: End date for filtering.
+            all_mode: If True, downloads all available reports ignoring the date range.
+
+        Returns:
+            The number of annual reports downloaded.
+        """
+        ar_config = DOWNLOAD_CATEGORIES_CONFIG.get("annual_reports", {})
+        folder_name = ar_config.get("folder_name", "annual_reports")
+        shorthand = ar_config.get("shorthand", "AR")
+        ar_folder = root_dir / folder_name
         ar_folder.mkdir(parents=True, exist_ok=True)
         count = 0
 
@@ -223,7 +241,9 @@ class KnowledgeService:
                         continue
 
                 logger.info(f"Downloading Annual Report for {yr}...")
-                if adapter.download_document(url, ar_folder):
+                ext = Path(url.split("?")[0]).suffix or ".pdf"
+                file_name = f"{generate_standard_filename(str(yr), shorthand)}{ext}"
+                if adapter.download_and_extract(url, ar_folder, file_name):
                     count += 1
         return count
 
@@ -269,7 +289,7 @@ class KnowledgeService:
         #             continue
 
         #         logger.info(f"Downloading credit rating from NSE: {filename}")
-        #         if adapter.download_document(url, cat_folder):
+        #         if adapter.download_and_extract(url, cat_folder):
         #             count += 1
         #             downloaded_files.add(filename)
         # return count
@@ -294,7 +314,9 @@ class KnowledgeService:
         Returns:
             Dict mapping document type labels to download counts.
         """
-        issue_dir = root_dir / ISSUE_DOCS_FOLDER
+        issue_cat_config = DOWNLOAD_CATEGORIES_CONFIG.get("issue_documents", {})
+        issue_folder_name = issue_cat_config.get("folder_name", "share_issuance_docs")
+        issue_dir = root_dir / issue_folder_name
         issue_dir.mkdir(parents=True, exist_ok=True)
 
         # Resolve company name for endpoints where symbol is unreliable
@@ -353,7 +375,12 @@ class KnowledgeService:
                     if not url or url.lower() in ["-", "null", "nan"] or url.endswith("/-"):
                         continue
 
-                    if adapter.download_and_extract(url, doc_folder):
+                    # Attempt to extract some temporal info from doc (e.g. fileDate, date_attachmnt)
+                    temporal = str(doc.get("fileDate", doc.get("date_attachmnt", "")))
+                    ext = Path(url.split("?")[0]).suffix or ".pdf"
+                    file_name = f"{generate_standard_filename(temporal, config.get('shorthand', 'IssueDoc'))}{ext}"
+
+                    if adapter.download_and_extract(url, doc_folder, file_name):
                         count += 1
 
             counts[label] = count
@@ -406,7 +433,18 @@ class KnowledgeService:
     def _enrich_shm_records(
         self, records: List[Dict], symbol: str, adapter: NSEAdapter, download_dir: Path
     ):
-        """Enrich SHM records with resolution details from PDF notices."""
+        """Enrich Shareholder Meeting (SHM) records with resolution details from PDF notices.
+
+        Fetches general announcements around the broadcast date of the SHM XBRL record
+        to find the corresponding PDF notice. Evaluates candidates based on their description
+        and stores the path to the downloaded PDF in the record.
+
+        Args:
+            records: List of parsed SHM XBRL records to enrich.
+            symbol: Stock symbol.
+            adapter: Initialized NSEAdapter for fetching announcements and documents.
+            download_dir: Root download directory for this symbol.
+        """
 
         # We need general announcements to find the PDF.
         # Since we have a list of records, we can determine the date range needed.
@@ -520,35 +558,24 @@ class KnowledgeService:
                 target_pdf_url = best_candidate[1]
                 logger.info(f"Found matching PDF: {target_pdf_url}")
 
+                shm_config = DOWNLOAD_CATEGORIES_CONFIG.get("shm", {})
+                shorthand = shm_config.get("shorthand", "SHM")
+                
                 # Download to shm folder instead of temp
-                shm_dir = download_dir / "shareholder_meetings" / "shm_notices"
+                shm_dir = download_dir / shm_config.get("folder_name", "shareholder_meetings") / "shm_notices"
                 shm_dir.mkdir(parents=True, exist_ok=True)
 
-                if adapter.download_document(target_pdf_url, shm_dir):
-                    # Find the downloaded file (name might be different or same)
-                    filename = target_pdf_url.split("/")[-1]
-                    pdf_path = shm_dir / filename
+                ext = Path(target_pdf_url.split("?")[0]).suffix or ".pdf"
+                file_name = f"{generate_standard_filename(xbrl_dt_str, shorthand)}{ext}"
+
+                if adapter.download_and_extract(target_pdf_url, shm_dir, file_name):
+                    # The file was saved as file_name
+                    pdf_path = shm_dir / file_name
 
                     if pdf_path.exists():
                         try:
-                            # Convert to markdown
-                            md_path = pdf_path.with_suffix(".md")
-                            try:
-                                from markitdown import MarkItDown
-                                markitdown = MarkItDown()
-                                result = markitdown.convert(str(pdf_path))
-                                with open(md_path, "w", encoding="utf-8") as f:
-                                    f.write(result.text_content)
-                                record["local_markdown_path"] = str(md_path.absolute())
-                            except Exception as e:
-                                logger.error(f"Failed to convert PDF to Markdown: {e}")
-
-                            record["pdf_url"] = target_pdf_url
+                            # record["pdf_url"] = target_pdf_url
                             record["local_pdf_path"] = str(pdf_path.absolute())
-                            record["note"] = (
-                                "Please refer to the local PDF or markdown file for verification."
-                            )
-                            logger.info("Successfully processed PDF to markdown.")
                         except Exception as e:
                             logger.error(f"Failed to process PDF: {e}")
                     else:

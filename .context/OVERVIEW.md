@@ -10,7 +10,7 @@ A CLI and Streamlit web app for batch downloading NSE company announcements by c
 
 ## Core Features
 
-- **CLI** (`knowledgelm`): Batch download with `--json` output for automation
+- **CLI** (`knowledgelm`): Unified `fetch nse` and `fetch vp` interface with hard JSON output for automation.
 - **Agent Skill**: Works with Claude Code, Gemini CLI, Codex, and other LLMs
 - Download announcements by category (Transcripts, Investor Presentations, Credit Ratings, Related Party Transactions, Annual Reports)
 - View/download individual filings via Streamlit UI (Resignations, Reg 30 Updates, Press Releases)
@@ -53,7 +53,7 @@ KnowledgeLM is built with **AI Agents** as its primary users. To ensure optimal 
 uv sync
 
 # CLI
-uv run knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
+uv run knowledgelm fetch nse HDFCBANK --start 2023-01-01 --end 2025-01-26 --datasets all
 
 # Web UI
 uv run streamlit run src/knowledgelm/app.py

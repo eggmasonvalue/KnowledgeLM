@@ -3,15 +3,22 @@
 ## [Unreleased]
 
 ### Added
+- **Standardized PDF Filenames**: Implemented dynamic generation of standardized filenames for downloaded PDFs across all endpoints (NSE and Screener). Files are now saved using an ISO-8601 formatted date prefix and category shorthand (e.g., `2024_AR.pdf` or `2025-01-17_Transcript.pdf`). This dramatically improves LLM context framing compared to random or opaque source filenames (e.g., `AR_12345.pdf` or `SE_Intimation.pdf`).
+- **PDF-to-Markdown Converter (`convert`)**: Added a standalone `convert` CLI group with `file` and `dir` subcommands leveraging `markitdown` for high-quality LLM context extraction. Evaluated as a post-processor (rather than injected inline into `fetch nse`) to prevent massive network timeouts caused by 2-minute+ CPU cycles rendering 100+ page ARs.
+- **Unified Fetch CLI**: Completely rewrote `cli.py` to use a universal `fetch nse` and `fetch vp` verb/noun structure, removing `download`, `forum`, `personnel`, `key-announcements`, and `shareholder-meetings` as top-level commands. This drastically reduces the cognitive load for LLM Agents trying to drive the tool.
+- **LLM-Oriented Docstrings**: Rewrote all CLI `--help` strings to focus explicitly on the JSON input/output schemas of the data extraction, dropping human-oriented prose.
 - **ValuePickr Forum Support in WebUI**: Added UI elements to `app.py` for downloading ValuePickr forum threads, establishing feature parity with the CLI. Included a new checkbox and URL input under the "Select Filing Categories" section.
 - **Configurable JSON Output**: Introduced an `output_keys` configuration option in `config.py` for XBRL categories (`personnel`, `key_announcements`, and `shm`). The saved JSON files for these categories now only contain high-value fields (e.g., `xbrl_data`, `broadcastDateTime`, `local_pdf_path`) by default, rather than dumping all raw NSE metadata. This significantly improves data density for target LLMs like NotebookLM.
+
+### Documentation
+- **Production-Quality Docstrings**: Conducted a comprehensive docstring review across all Python files in the project. Expanded and added missing module, class, and method docstrings (e.g., in `KnowledgeService`, `NSEAdapter`, `NSEXBRLHarvester`, `log_utils.py`) to conform to production-quality standards.
+
 
 ### Fixed
 - **Robust XBRL Resolution**: Updated `nse-xbrl-parser` to fix "Shadowed XSD" and "Relative Path Resolution" errors. This enables successful parsing of Swiggy and other recent filings that were previously falling back to the internal API due to missing schema definitions.
 - Created `scripts/build_golden_taxonomy.py` to crawl the NSE site, download all historical taxonomy zips, and automatically extract them (including nested zips) into a unified `golden_taxonomy_v1` directory.
 - Integrated XBRL harvester for granular announcement data.
 - New announcement categories: "Change in Personnel", "Key announcements", <!-- "Board Meeting Outcome", --> and "Shareholder Meetings".
-- Structured XBRL query support in CLI (`personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`).
 - Enhanced Streamlit UI with XBRL category selection and detailed views.
 - **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
 

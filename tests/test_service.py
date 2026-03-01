@@ -51,7 +51,7 @@ def test_process_request_success(mock_adapter_cls):
             "attchmntText": ""
         }
     ]
-    mock_adapter.download_document.return_value = True
+    mock_adapter.download_and_extract.return_value = True
 
     service = KnowledgeService("/tmp")
     options = {"download_investor_presentations": True}
@@ -61,7 +61,7 @@ def test_process_request_success(mock_adapter_cls):
     )
 
     assert counts["investor presentation"] == 1
-    mock_adapter.download_document.assert_called_once()
+    mock_adapter.download_and_extract.assert_called_once()
 
     # Check folder creation logic was called (implicitly by checking if download_document was called with correct path)
     # mock_adapter initialized with sanitized folder path
@@ -78,7 +78,7 @@ def test_process_annual_reports(mock_adapter_cls):
     mock_adapter.get_annual_reports.return_value = {
         "2023": [{"url": "http://example.com/ar.pdf", "toYr": "2023"}]
     }
-    mock_adapter.download_document.return_value = True
+    mock_adapter.download_and_extract.return_value = True
 
     service = KnowledgeService("/tmp")
     options = {"download_annual_reports": True}
@@ -90,14 +90,14 @@ def test_process_annual_reports(mock_adapter_cls):
     assert counts["annual report"] == 1
 
     # Test with date range mismatch
-    mock_adapter.download_document.reset_mock()
+    mock_adapter.download_and_extract.reset_mock()
     announcements, counts = service.process_request(
         "SYMBOL", datetime(2020, 1, 1), datetime(2020, 12, 31), "folder", options
     )
     assert counts["annual report"] == 0
 
     # Test with all_mode
-    mock_adapter.download_document.reset_mock()
+    mock_adapter.download_and_extract.reset_mock()
     announcements, counts = service.process_request(
         "SYMBOL", datetime(2020, 1, 1), datetime(2020, 12, 31), "folder", options,
         annual_reports_all_mode=True
@@ -123,7 +123,7 @@ def test_process_credit_ratings_screener_success(mock_screener_dl, mock_adapter_
 
     assert counts["credit rating"] == 5
     mock_screener_dl.assert_called_once()
-    mock_adapter.download_document.assert_not_called()
+    mock_adapter.download_and_extract.assert_not_called()
 
 @patch("knowledgelm.core.service.NSEAdapter")
 @patch("knowledgelm.core.service.download_credit_ratings_from_screener")
@@ -139,7 +139,7 @@ def test_process_credit_ratings_no_fallback(mock_screener_dl, mock_adapter_cls):
             "attchmntText": ""
         }
     ]
-    mock_adapter.download_document.return_value = True
+    mock_adapter.download_and_extract.return_value = True
 
     mock_screener_dl.return_value = 0 # Screener failed or empty
 
@@ -153,7 +153,7 @@ def test_process_credit_ratings_no_fallback(mock_screener_dl, mock_adapter_cls):
     # Should be 0 because fallback is disabled
     assert counts["credit rating"] == 0
     mock_screener_dl.assert_called_once()
-    mock_adapter.download_document.assert_not_called()
+    mock_adapter.download_and_extract.assert_not_called()
 
 @patch("knowledgelm.core.service.NSEAdapter")
 def test_process_issue_documents(mock_adapter_cls):

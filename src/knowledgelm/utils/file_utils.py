@@ -1,5 +1,6 @@
 """Utility functions for file handling and sanitization."""
 
+import datetime
 import re
 from pathlib import Path
 
@@ -45,3 +46,51 @@ def get_download_path(base_dir: str, folder_name: str) -> Path:
     """
     safe_name = sanitize_folder_name(folder_name)
     return Path(base_dir) / safe_name
+
+
+def format_iso_date(date_str: str) -> str:
+    """Parse various date formats and return YYYY-MM-DD or YYYY."""
+    if not date_str:
+        return "UnknownDate"
+    
+    # Try parsing common formats
+    formats = [
+        "%d-%b-%Y %H:%M:%S",  # General announcements: "17-Jan-2026 17:36:35"
+        "%d-%b-%Y %H:%M",
+        "%d-%b-%Y",
+        "%d_%b_%Y",  # Screener credit rating
+        "%Y",        # Annual reports target year
+    ]
+    
+    for fmt in formats:
+        try:
+            dt = datetime.datetime.strptime(date_str, fmt)
+            if fmt == "%Y":
+                return dt.strftime("%Y") 
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+            
+    # Screener specific edge case like "4_Jul_from_icra"
+    if "_from_" in date_str:
+        clean_date = date_str.split("_from_")[0] # "4_Jul"
+        return clean_date.replace("_", "-")
+
+    safe_str = re.sub(r'[\\/*?:"<>|]', "", str(date_str))
+    return safe_str.replace(" ", "_")
+
+
+def generate_standard_filename(temporal_str: str, shorthand: str) -> str:
+    """Generate filename base based on temporal info and shorthand.
+    
+    Args:
+        temporal_str: The extracted date string to parse.
+        shorthand: The shorthand for the category (e.g., 'AR', 'Transcript').
+        
+    Returns:
+        The standardized filename prefix like '2024_AR'.
+    """
+    iso_date = format_iso_date(temporal_str)
+    
+    return f"{iso_date}_{shorthand}"
+

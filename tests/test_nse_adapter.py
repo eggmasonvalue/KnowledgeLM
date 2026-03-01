@@ -60,8 +60,8 @@ def test_get_annual_reports_error(mock_nse):
     result = adapter.get_annual_reports("SYMBOL")
     assert result == {}
 
-def test_download_document_success(mock_nse):
-    """Test successful document download via _req."""
+def test_download_and_extract_direct_file(mock_nse):
+    """Test successful document download via _req when it's just a file (not a zip)."""
     adapter = NSEAdapter(Path("foo"))
     url = "http://example.com/doc.pdf"
     dest = Path("bar")
@@ -72,17 +72,17 @@ def test_download_document_success(mock_nse):
     mock_response.content = b"PDF content"
     mock_nse._req.return_value = mock_response
 
-    result = adapter.download_document(url, dest)
+    result = adapter.download_and_extract(url, dest)
 
     assert result is True
     mock_nse._req.assert_called_with(url)
 
-def test_download_document_error(mock_nse):
+def test_download_and_extract_direct_file_error(mock_nse):
     """Test error handling during document download."""
     adapter = NSEAdapter(Path("foo"))
     mock_nse._req.side_effect = Exception("Download failed")
 
-    result = adapter.download_document("http://example.com/doc.pdf", Path("bar"))
+    result = adapter.download_and_extract("http://example.com/doc.pdf", Path("bar"))
 
     assert result is False
 

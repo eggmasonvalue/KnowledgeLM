@@ -14,11 +14,12 @@ import urllib3
 from bs4 import BeautifulSoup
 
 from knowledgelm.config import (
-    CREDIT_RATING_FOLDER,
+    DOWNLOAD_CATEGORIES_CONFIG,
     SCREENER_BASE_URL,
     SCREENER_DOCS_SELECTOR,
     SCREENER_TIMEOUT,
 )
+from knowledgelm.utils.file_utils import generate_standard_filename
 from knowledgelm.utils.log_utils import redirect_output_to_logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -179,7 +180,10 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
 
         logger.info(f"Found {len(links)} credit rating links.")
 
-        dest_folder = download_folder / CREDIT_RATING_FOLDER
+        cat_config = DOWNLOAD_CATEGORIES_CONFIG.get("credit_rating", {})
+        folder_name = cat_config.get("folder_name", "credit_rating")
+        shorthand = cat_config.get("shorthand", "CR")
+        dest_folder = download_folder / folder_name
         dest_folder.mkdir(parents=True, exist_ok=True)
 
         count = 0
@@ -218,7 +222,7 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
                         date_text = safe_text
 
                 # Construct new filename prefix
-                filename_prefix = f"CreditRating-{date_text}"
+                filename = f"{generate_standard_filename(date_text, shorthand)}.pdf"
 
                 # 1. Attempt to resolve ICRA PDF link directly
                 pdf_url = _get_icra_pdf_url(url)
@@ -241,8 +245,9 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
 
                 content_type = resp.headers.get("Content-Type", "").lower()
 
-                # Construct filename
-                filename = f"{filename_prefix}.pdf"
+                # The generate_standard_filename created a .pdf extension as fallback.
+                # If content_type is not pdf, we still output .pdf because we convert it using Selenium later.
+                # Construct filename is already done above.
 
                 if "application/pdf" in content_type:
                     if filename in downloaded_files:

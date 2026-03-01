@@ -91,18 +91,18 @@ KnowledgeLM/
 ## [done] CLI Interface (v3.0)
 
 Full programmatic access via `knowledgelm` command:
-- **Download**: Batch download with automated folder creation.
-- **Discovery**: `--help` on all levels for self-documenting interface.
-- **JSON Output**: `--json` flag for machine readability and AI agent parsing.
-- **Help Discovery**: `--help` on all commands for agent self-discovery
+- **Universal Fetch**: Batch download and XBRL extraction handled via `fetch nse`. Forum downloads via `fetch vp`.
+- **Discovery**: `list-datasets` allows the agent to build the configuration dynamically.
+- **JSON Output**: CLI natively produces JSON for machine readability and AI agent parsing.
+- **Help Discovery**: `--help` on all commands for agent self-discovery.
 
 ## Component Responsibilities
 
 ### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`)
-- **XBRL Support**: Commands to query personnel, key announcements, <!-- board outcomes, --> and shareholder meetings via XBRL harvester.
-- **JSON Output**: `--json` flag for agent parsing
-- **Help Discovery**: `--help` on all commands for agent self-discovery
+- **CLI**: Click-based universal `fetch` interface.
+- **XBRL Support**: Passed dynamically as datasets to the overarching API.
+- **JSON Default**: All commands print exclusively valid JSON object strings to stdout.
+- **Help Discovery**: Instructs agents to use standard `--help` traversal.
 
 ### app.py
 - **UI**: Premium card-based layout (`st.container(border=True)`) with a strictly aligned **4x3 checkbox grid**.

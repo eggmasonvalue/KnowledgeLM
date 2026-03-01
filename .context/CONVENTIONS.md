@@ -24,7 +24,7 @@ KnowledgeLM/
 | Element | Pattern | Example |
 |---------|---------|---------|
 | Constants | `UPPER_SNAKE_CASE` | `CREDIT_RATING_FOLDER` |
-| Functions | `snake_case` | `download_announcements()` |
+| Functions | `snake_case` | `fetch()` |
 | Download folders | `snake_case` | `investor_presentations/` |
 
 ## Patterns
