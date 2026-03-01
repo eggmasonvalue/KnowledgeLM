@@ -1,13 +1,6 @@
 """Configuration settings for KnowledgeLM."""
 
-# --- Folder Names ---
-RESIGNATIONS_FOLDER = "resignations"
-PRESS_RELEASES_FOLDER = "press_releases"
-CREDIT_RATING_FOLDER = "credit_rating"
-ANNUAL_REPORTS_FOLDER = "annual_reports"
-TRANSCRIPTS_FOLDER = "transcripts"
-INVESTOR_PRESENTATIONS_FOLDER = "investor_presentations"
-RELATED_PARTY_TXNS_FOLDER = "related_party_txns"
+# --- Folder configuration moved directly into categories below ---
 
 # --- Constants ---
 ANNOUNCEMENTS_JSON_TEMPLATE = "{symbol}_announcements.json"
@@ -22,35 +15,51 @@ DOWNLOAD_CATEGORIES_CONFIG = {
     "transcripts": {
         "enabled_arg": "download_transcripts",
         "label": "analyst call transcript",
+        "folder_name": "transcripts",
+        "shorthand": "Transcript",
     },
     "investor_presentations": {
         "enabled_arg": "download_investor_presentations",
         "label": "investor presentation",
+        "folder_name": "investor_presentations",
+        "shorthand": "Presentation",
     },
     "press_releases": {
         "enabled_arg": "download_press_releases",
         "label": "press release",
+        "folder_name": "press_releases",
+        "shorthand": "PR",
     },
     "credit_rating": {
         "enabled_arg": "download_credit_rating",
         "label": "credit rating",
+        "folder_name": "credit_rating",
+        "shorthand": "CR",
     },
     "related_party_txns": {
         "enabled_arg": "download_related_party_txns",
         "label": "related party transaction",
+        "folder_name": "related_party_txns",
+        "shorthand": "RPT",
     },
     "annual_reports": {
         "enabled_arg": "download_annual_reports",
         "label": "annual report",
+        "folder_name": "annual_reports",
+        "shorthand": "AR",
     },
     "issue_documents": {
         "enabled_arg": "download_issue_documents",
         "label": "issue document",
+        "folder_name": "share_issuance_docs",
+        "shorthand": "IssueDoc",
     },
     # XBRL-based categories
     "personnel": {
         "enabled_arg": "download_personnel",
         "label": "personnel change",
+        "folder_name": "personnel",
+        "shorthand": "Personnel",
         "is_xbrl": True,
         "xbrl_cat": "Change in Personnel",
         "output_keys": ["broadcastDateTime", "xbrl_data"],
@@ -58,19 +67,17 @@ DOWNLOAD_CATEGORIES_CONFIG = {
     "key_announcements": {
         "enabled_arg": "download_key_announcements",
         "label": "key announcement",
+        "folder_name": "key_announcements",
+        "shorthand": "KeyAnn",
         "is_xbrl": True,
         "xbrl_cat": "Key announcements",
         "output_keys": ["subOfAnn", "broadcastDateTime", "xbrl_data"],
     },
-    # "board_outcome": {
-    #     "enabled_arg": "download_board_outcome",
-    #     "label": "board meeting outcome",
-    #     "is_xbrl": True,
-    #     "xbrl_cat": "Board Meeting Outcome",
-    # },
     "shm": {
         "enabled_arg": "download_shm",
         "label": "shareholder meeting",
+        "folder_name": "shareholder_meetings",
+        "shorthand": "SHM",
         "is_xbrl": True,
         "xbrl_cat": "Shareholder Meetings",
         "output_keys": ["eventType", "broadcastDateTime", "ixbrl", "local_pdf_path"],
@@ -78,16 +85,14 @@ DOWNLOAD_CATEGORIES_CONFIG = {
 }
 
 # --- Issue Documents Config ---
-ISSUE_DOCS_FOLDER = "share_issuance_docs"
-
 ISSUE_DOCS_CONFIG = {
     "offer_documents": {
         "label": "Offer Documents (IPO)",
         "api_path": "/corporates/offerdocs",
         "api_params": {"index": "equities"},
-        # "attachment_fields": ["drhpAttach", "rhpAttach", "fpAttach"],
         "attachment_fields": ["fpAttach"],
         "subfolder": "Offer Documents (IPO)",
+        "shorthand": "OfferDoc",
         "symbol_reliable": False,
     },
     "rights_issue": {
@@ -96,6 +101,7 @@ ISSUE_DOCS_CONFIG = {
         "api_params": {"index": "equities"},
         "attachment_fields": ["draftAttch", "finalAttach"],
         "subfolder": "Rights Issue",
+        "shorthand": "Rights",
         "symbol_reliable": True,
     },
     "qip_offer": {
@@ -104,6 +110,7 @@ ISSUE_DOCS_CONFIG = {
         "api_params": {"index": "qip"},
         "attachment_fields": ["attachFile"],
         "subfolder": "QIP Offer",
+        "shorthand": "QIP",
         "symbol_reliable": False,
     },
     "info_memorandum": {
@@ -112,6 +119,7 @@ ISSUE_DOCS_CONFIG = {
         "api_params": {},
         "attachment_fields": ["date_attachmnt"],
         "subfolder": "Information Memorandum",
+        "shorthand": "InfoMemo",
         "symbol_reliable": False,
     },
     "scheme_document": {
@@ -120,6 +128,7 @@ ISSUE_DOCS_CONFIG = {
         "api_params": {},
         "attachment_fields": ["date_attachmnt"],
         "subfolder": "Scheme of Arrangement",
+        "shorthand": "SchemeDoc",
         "symbol_reliable": False,
     },
 }

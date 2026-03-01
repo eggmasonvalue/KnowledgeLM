@@ -1,3 +1,5 @@
+"""Adapter module for interacting with the NSE library and data endpoints."""
+
 import io
 import logging
 import zipfile
@@ -29,7 +31,16 @@ class NSEAdapter:
     def get_announcements(
         self, symbol: str, from_date: datetime, to_date: datetime
     ) -> List[Dict[str, Any]]:
-        """Fetch announcements from NSE."""
+        """Fetch announcements from NSE for a specific symbol and date range.
+
+        Args:
+            symbol: Stock symbol.
+            from_date: Start date for the announcements fetch.
+            to_date: End date for the announcements fetch.
+
+        Returns:
+            A list of announcement dictionaries from the NSE response.
+        """
         logger.info(
             f"Fetching announcements for {symbol} ({from_date} to {to_date})..."
         )
@@ -41,7 +52,14 @@ class NSEAdapter:
             return []
 
     def get_annual_reports(self, symbol: str) -> Dict[str, Any]:
-        """Fetch annual reports metadata."""
+        """Fetch annual reports metadata from NSE.
+
+        Args:
+            symbol: Stock symbol.
+
+        Returns:
+            A dictionary containing annual report metadata, typically grouped by year.
+        """
         logger.info(f"Fetching annual reports for {symbol}...")
         try:
             with redirect_output_to_logger(logger):
@@ -50,14 +68,14 @@ class NSEAdapter:
             logger.error(f"Error fetching annual reports for {symbol}: {e}")
             return {}
 
-    def download_document(self, url: str, destination_folder: Path) -> bool:
+    def download_document(self, url: str, destination_folder: Path, file_name: Optional[str] = None) -> bool:
         """Download a document using the robust downloader.
         
         Alias for download_and_extract to maintain compatibility.
         """
-        return self.download_and_extract(url, destination_folder)
+        return self.download_and_extract(url, destination_folder, file_name)
 
-    def download_and_extract(self, url: str, destination_folder: Path) -> bool:
+    def download_and_extract(self, url: str, destination_folder: Path, file_name: Optional[str] = None) -> bool:
         """Download a document, extracting all contents if it is a ZIP archive.
 
         This uses the internal NSE session (_req) for authentication but performs
@@ -66,7 +84,8 @@ class NSEAdapter:
         Args:
             url: URL of the document to download.
             destination_folder: Folder to save/extract the file into.
-
+            file_name: Optional override for the saved filename.
+            
         Returns:
             True if download succeeded.
         """
@@ -84,9 +103,12 @@ class NSEAdapter:
                 return False
 
             content_type = response.headers.get("Content-Type", "").lower()
-            filename = url.split("/")[-1]
-            if not filename:
-                filename = "document_data"
+            if file_name:
+                filename = file_name
+            else:
+                filename = url.split("/")[-1]
+                if not filename:
+                    filename = "document_data"
 
             # 1. Handle ZIP
             if "zip" in content_type or filename.lower().endswith(".zip"):

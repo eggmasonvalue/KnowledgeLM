@@ -1,5 +1,6 @@
 """Utility functions for file handling and sanitization."""
 
+import datetime
 import re
 from pathlib import Path
 
@@ -45,3 +46,62 @@ def get_download_path(base_dir: str, folder_name: str) -> Path:
     """
     safe_name = sanitize_folder_name(folder_name)
     return Path(base_dir) / safe_name
+
+
+def format_iso_date(date_str: str) -> str:
+    """Parse various date formats and return YYYY-MM-DD or YYYY."""
+    if not date_str:
+        return "UnknownDate"
+    
+    # Try parsing common formats
+    formats = [
+        "%d-%b-%Y %H:%M:%S",  # General announcements: "17-Jan-2026 17:36:35"
+        "%d-%b-%Y %H:%M",
+        "%d-%b-%Y",
+        "%d_%b_%Y",  # Screener credit rating
+        "%Y",        # Annual reports target year
+    ]
+    
+    for fmt in formats:
+        try:
+            dt = datetime.datetime.strptime(date_str, fmt)
+            if fmt == "%Y":
+                return dt.strftime("%Y") 
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+            
+    # Screener specific edge case like "4_Jul_from_icra"
+    if "_from_" in date_str:
+        clean_date = date_str.split("_from_")[0] # "4_Jul"
+        return clean_date.replace("_", "-")
+
+    safe_str = re.sub(r'[\\/*?:"<>|]', "", str(date_str))
+    return safe_str.replace(" ", "_")
+
+
+def generate_standard_filename(url: str, temporal_str: str, shorthand: str) -> str:
+    """Generate filename based on temporal info and shorthand.
+    
+    Args:
+        url: The original URL (used to extract extension).
+        temporal_str: The extracted date string to parse.
+        shorthand: The shorthand for the category (e.g., 'AR', 'Transcript').
+        
+    Returns:
+        The standardized filename like '2024_AR.pdf'.
+    """
+    iso_date = format_iso_date(temporal_str)
+    
+    # Try to extract extension from URL, fallback to .pdf
+    # This won't perfectly handle query params, but URLs from NSE/Screener are usually clean
+    # or handle files without explicit extensions.
+    filename_part = url.split("/")[-1]
+    ext = "pdf"
+    if "." in filename_part:
+        potential_ext = filename_part.split(".")[-1].split("?")[0].lower()
+        if potential_ext in ["pdf", "zip", "json"]:
+            ext = potential_ext
+            
+    return f"{iso_date}_{shorthand}.{ext}"
+
