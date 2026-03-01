@@ -68,13 +68,6 @@ class NSEAdapter:
             logger.error(f"Error fetching annual reports for {symbol}: {e}")
             return {}
 
-    def download_document(self, url: str, destination_folder: Path, file_name: Optional[str] = None) -> bool:
-        """Download a document using the robust downloader.
-        
-        Alias for download_and_extract to maintain compatibility.
-        """
-        return self.download_and_extract(url, destination_folder, file_name)
-
     def download_and_extract(self, url: str, destination_folder: Path, file_name: Optional[str] = None) -> bool:
         """Download a document, extracting all contents if it is a ZIP archive.
 

@@ -151,7 +151,7 @@ class KnowledgeService:
                             temporal_str=item.get("an_dt", ""),
                             shorthand=config.get("shorthand", cat_key)
                         )
-                        if nse_adapter.download_document(url, cat_folder, file_name):
+                        if nse_adapter.download_and_extract(url, cat_folder, file_name):
                             count += 1
             category_counts[label] = count
             logger.info(f"Completed {label}: {count} items.")
@@ -245,7 +245,7 @@ class KnowledgeService:
 
                 logger.info(f"Downloading Annual Report for {yr}...")
                 file_name = generate_standard_filename(url, str(yr), shorthand)
-                if adapter.download_document(url, ar_folder, file_name):
+                if adapter.download_and_extract(url, ar_folder, file_name):
                     count += 1
         return count
 
@@ -291,7 +291,7 @@ class KnowledgeService:
         #             continue
 
         #         logger.info(f"Downloading credit rating from NSE: {filename}")
-        #         if adapter.download_document(url, cat_folder):
+        #         if adapter.download_and_extract(url, cat_folder):
         #             count += 1
         #             downloaded_files.add(filename)
         # return count
@@ -568,7 +568,7 @@ class KnowledgeService:
 
                 file_name = generate_standard_filename(target_pdf_url, xbrl_dt_str, shorthand)
 
-                if adapter.download_document(target_pdf_url, shm_dir, file_name):
+                if adapter.download_and_extract(target_pdf_url, shm_dir, file_name):
                     # The file was saved as file_name
                     pdf_path = shm_dir / file_name
 
