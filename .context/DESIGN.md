@@ -11,18 +11,17 @@ Batch download filings by category with configurable filters:
 
 ## [done] CLI Interface (v3.0)
 
-Full programmatic access via `knowledgelm`### cli.py
-- **CLI**: Click-based command interface (`download`, `list-categories`, `list-files`, `forum`, `personnel`, `key-announcements`, <!-- `board-outcome`, --> `shareholder-meetings`)
-- **Categories**: `issue_documents` added alongside existing download categories.
-- **XBRL Support**: Commands to query personnel, key announcements, <!-- board outcomes, --> and shareholder meetings via XBRL harvester.
-- **JSON Output**: `--json` flag for agent parsing.
+Full programmatic access via `knowledgelm`
+- **CLI**: Click-based command interface (`fetch nse`, `fetch vp`, `list-datasets`) designed strictly for LLM Agents.
+- **Categories**: `issue_documents` and XBRL categories (`personnel`, `key_announcements`, `shm`) exist as valid target datasets for the `fetch nse` command.
+- **JSON Output**: All CLI commands output pure JSON format for agent parsing without terminal noise.
 
 ## [done] ValuePickr Forum Export (v4.1)
 
 Export entire ValuePickr (Discourse) threads for offline reading and AI analysis.
 - **Source**: ValuePickr Forum (JSON API).
 - **Format**: Clean PDF with embedded images and charts.
-- **Interfaces**: Available via CLI (`knowledgelm forum`) and Streamlit WebUI (checkbox).
+- **Interfaces**: Available via universal CLI (`knowledgelm fetch vp`) and Streamlit WebUI (checkbox).
 - **Design Goals**:
     - **Multimodal**: PDF format preserves charts for NotebookLM visual analysis.
     - **High Signal**: Strips usernames, avatars, signatures, and badges. Only retains Dates and Content.
@@ -33,7 +32,7 @@ Export entire ValuePickr (Discourse) threads for offline reading and AI analysis
 - **Standardized Skill**: `SKILL.md` compliant with [Agent Skills](https://agentskills.io) standard, hosted in a [separate public repository](https://github.com/eggmasonvalue/knowledgelm-nse) for decoupled distribution.
 - **Context Preservation**: Strictly silent execution (no `stdout`/`stderr` noise) to prevent LLM context window pollution.
 - **Automation workflows**: Optimized for LLM tools (Claude Code, Gemini CLI, etc.) with structured JSON results.
-- **NotebookLM Synergy**: Purpose-built `list-files --json` command to facilitate source injection.
+- **Unified Actions**: The CLI exposes a simple `fetch nse` and `fetch vp` verb/noun structure to lower cognitive load for LLM models.
 
 ## [done] Credit Rating (Screener.in)
 
@@ -55,6 +54,15 @@ Expandable tables with per-row downloads:
 - Shareholder Meetings (via XBRL)
 - Press Releases (legacy filter)
 - Regulation 30 Updates (legacy filter)
+
+## [done] PDF to Markdown Converter (v5.0.0)
+
+A standalone `convert` command handles offline PDF-to-Markdown conversion using `markitdown`.
+
+- **Explicit Post-Processing**: Conversion is inherently decoupled from the `fetch` command.
+- **Why**: Performance tuning against real NSE data (like HDFCBANK Annual Reports) showed conversion times of over **2 minutes per file** (1.8+ million characters). Running this during default fetches would trigger massive latency blocking and cause LLM Agents to timeout natively.
+- **Agent Strategy**: Agents should `fetch` rapidly, evaluate filenames from the JSON result, and then strategically execute `convert file` or `convert dir` strictly on high-yield targets.
+- **Zero-Trust Validation**: Implements aggressive input validation on target paths to handle LLM hallucinations (e.g. attempting to convert missing files, non-PDF files, or directories that don't exist).
 
 ## [done] Session State Management
 
@@ -90,7 +98,7 @@ Standardized download destinations for better research organization:
 
 Download company share issue documents from NSE corporate filings:
 - **Document Types**: Offer Documents (IPO), Rights Issue, QIP Offer, Information Memorandum, Scheme of Arrangement.
-- **Category**: `issue_documents` within the existing `download` command — no date range dependency.
+- **Category**: `issue_documents` within the existing `fetch nse --datasets` argument — no date range dependency.
 - **API**: 5 NSE endpoints under `/api/corporates/offerdocs/...`, fetched via the `nse` library's session.
 - **Matching**: Symbol-based for Rights, QIP, Schemes; company-name-based (via `equityMetaInfo`) for Offer Docs and Info Memo where symbol fields are unreliable.
 - **ZIP Handling**: Delegated to the `nse` library's native `download_document` which auto-extracts ZIPs.
@@ -98,7 +106,7 @@ Download company share issue documents from NSE corporate filings:
 
 ## [done] Resignations Query CLI (v5.0)
 
-Standalone `knowledgelm resignations` command for querying board-level resignations (Replaced by `personnel` in v5.1).
+Standalone `knowledgelm resignations` command for querying board-level resignations (Replaced by `personnel` datatset in `fetch nse`).
 
 ---
 

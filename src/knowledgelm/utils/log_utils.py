@@ -1,3 +1,5 @@
+"""Utilities for redirecting Standard Output to logs to maintain clean terminal output."""
+
 import contextlib
 import logging
 import sys

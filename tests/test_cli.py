@@ -7,22 +7,22 @@ from click.testing import CliRunner
 from knowledgelm.cli import main
 
 
-def test_download_help():
-    """Test help message for download command."""
+def test_fetch_nse_help():
+    """Test help message for fetch nse command."""
     runner = CliRunner()
-    result = runner.invoke(main, ["download", "--help"])
+    result = runner.invoke(main, ["fetch", "nse", "--help"])
     assert result.exit_code == 0
-    assert "Download company filings" in result.output
+    assert "Fetch Corporate Filings and XBRL" in result.output
 
 @patch("knowledgelm.cli.KnowledgeService")
-def test_download_success(mock_service_cls):
-    """Test successful download command execution (now outputs JSON by default)."""
+def test_fetch_nse_success(mock_service_cls):
+    """Test successful fetch nse command execution."""
     mock_service = mock_service_cls.return_value
     mock_service.process_request.return_value = ([], {"transcript": 1})
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["download", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
+        result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31"])
 
         assert result.exit_code == 0
         
@@ -42,14 +42,14 @@ def test_download_success(mock_service_cls):
         mock_service.process_request.assert_called()
 
 @patch("knowledgelm.cli.KnowledgeService")
-def test_download_all_categories(mock_service_cls):
-    """Test download with all categories (default)."""
+def test_fetch_nse_all_datasets(mock_service_cls):
+    """Test fetch nse with all datasets (default)."""
     mock_service = mock_service_cls.return_value
     mock_service.process_request.return_value = ([], {})
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["download", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31", "--categories", "all"])
+        result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31", "--datasets", "all"])
         assert result.exit_code == 0
 
         args = mock_service.process_request.call_args[1]
@@ -58,11 +58,11 @@ def test_download_all_categories(mock_service_cls):
         assert all(options.values())
 
 @patch("knowledgelm.cli.KnowledgeService")
-def test_download_invalid_date(mock_service_cls):
-    """Test invalid date format (now outputs JSON error by default)."""
+def test_fetch_nse_invalid_date(mock_service_cls):
+    """Test invalid date format error."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["download", "SYMBOL", "--from", "invalid", "--to", "2023-01-31"])
+        result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "invalid", "--end", "2023-01-31"])
 
         assert result.exit_code != 0
         
@@ -78,11 +78,11 @@ def test_download_invalid_date(mock_service_cls):
         assert "Invalid date format" in content
 
 @patch("knowledgelm.cli.KnowledgeService")
-def test_download_invalid_category(mock_service_cls):
-    """Test invalid category input (now outputs JSON error by default)."""
+def test_fetch_nse_invalid_dataset(mock_service_cls):
+    """Test invalid dataset input error."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["download", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31", "--categories", "invalid"])
+        result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31", "--datasets", "invalid"])
 
         assert result.exit_code != 0
         
@@ -95,17 +95,17 @@ def test_download_invalid_category(mock_service_cls):
         log_file = Path("knowledgelm.log")
         assert log_file.exists()
         content = log_file.read_text()
-        assert "Invalid categories" in content
+        assert "Invalid datasets" in content
 
 @patch("knowledgelm.cli.KnowledgeService")
-def test_download_unexpected_error(mock_service_cls):
-    """Test unexpected error handling during download (now outputs JSON error by default)."""
+def test_fetch_nse_unexpected_error(mock_service_cls):
+    """Test unexpected error handling during fetch nse."""
     mock_service = mock_service_cls.return_value
     mock_service.process_request.side_effect = Exception("Unexpected")
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["download", "SYMBOL", "--from", "2023-01-01", "--to", "2023-01-31"])
+        result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31"])
 
         assert result.exit_code != 0
         
@@ -120,30 +120,30 @@ def test_download_unexpected_error(mock_service_cls):
         content = log_file.read_text()
         assert "Unexpected error during download" in content
 
-def test_list_categories():
-    """Test listing categories (now outputs JSON by default)."""
+def test_list_datasets():
+    """Test listing datasets."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["list-categories"])
+        result = runner.invoke(main, ["list-datasets"])
         assert result.exit_code == 0
         
         # Check JSON on stdout
         data = json.loads(result.output)
-        assert "transcripts" in data
+        assert "datasets" in data
+        assert "transcripts" in data["datasets"]
 
         # Check log file
         log_file = Path("knowledgelm.log")
         assert log_file.exists()
         content = log_file.read_text()
-        assert "Available categories:" in content
-        assert "transcripts" in content
+        assert "Available datasets list fetched." in content
         assert "JSON Result:" in content
 
 @patch("knowledgelm.cli.ForumClient")
 @patch("knowledgelm.cli.PDFGenerator")
 @patch("knowledgelm.cli.ReferenceExtractor")
-def test_forum_command(mock_extractor_cls, mock_generator_cls, mock_client_cls):
-    """Test forum command (now outputs JSON by default)."""
+def test_fetch_vp_success(mock_extractor_cls, mock_generator_cls, mock_client_cls):
+    """Test fetch vp command."""
     mock_client = mock_client_cls.return_value
     mock_client.get_full_thread.return_value = {"title": "Test", "posts": []}
     mock_client.parse_topic_url.return_value = ("slug", 123)
@@ -154,7 +154,7 @@ def test_forum_command(mock_extractor_cls, mock_generator_cls, mock_client_cls):
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["forum", "http://url", "--symbol", "SYM"])
+        result = runner.invoke(main, ["fetch", "vp", "http://url", "--symbol", "SYM"])
         assert result.exit_code == 0
         
         # Check JSON on stdout
@@ -173,14 +173,14 @@ def test_forum_command(mock_extractor_cls, mock_generator_cls, mock_client_cls):
         mock_generator.generate_thread_pdf.assert_called()
 
 @patch("knowledgelm.cli.ForumClient")
-def test_forum_command_error(mock_client_cls):
-    """Test forum command error handling (now outputs JSON error by default)."""
+def test_fetch_vp_error(mock_client_cls):
+    """Test fetch vp command error handling."""
     mock_client = mock_client_cls.return_value
     mock_client.get_full_thread.side_effect = Exception("Fetch error")
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(main, ["forum", "http://url"])
+        result = runner.invoke(main, ["fetch", "vp", "http://url"])
         assert result.exit_code != 0
         
         # Check JSON on stdout

@@ -99,7 +99,7 @@ class NSEAdapter:
             if not original_filename:
                 original_filename = "document_data"
 
-            # 1. Handle ZIP mirroringnse lib logic
+            # 1. Handle ZIP mirroring
             if original_filename.lower().endswith(".zip") or original_filename.lower().endswith(".gz"):
                 try:
                     with zipfile.ZipFile(io.BytesIO(response.content)) as z:

@@ -1,3 +1,5 @@
+"""Harvester module for fetching and parsing NSE XBRL filings."""
+
 import logging
 import tempfile
 import time
@@ -104,7 +106,17 @@ class NSEXBRLHarvester:
         return []
 
     def _fallback_internal_api(self, app_id: str, announcement_type: str) -> Dict[str, Any]:
-        """Fetch parsed details from NSE's internal XBRL API."""
+        """Fetch parsed details from NSE's internal XBRL API.
+
+        Used as a fallback mechanism when standard XBRL parsing fails.
+
+        Args:
+            app_id: The application ID of the filing.
+            announcement_type: The filing type code (e.g., 'Reg30').
+
+        Returns:
+            Parsed details dictionary, or empty dict on failure.
+        """
         logger.warning(f"!!! SWITCHING TO INTERNAL API FALLBACK for {app_id} ({announcement_type}) !!!")
         url = f"{self.adapter.nse.base_url}/XBRL-announcements"
         params = {"type": announcement_type, "appId": app_id}

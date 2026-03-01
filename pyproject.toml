@@ -14,7 +14,10 @@ dependencies = [
     "selenium>=4.40.0",
     "click>=8.1.0",
     "nse-xbrl-parser",
-    "markitdown>=0.1.5",
+    "markitdown[pdf]>=0.1.5",
+    "pdfminer-six>=20251230",
+    "pdfplumber>=0.11.9",
+    "cryptography>=42.0.0",
 ]
 
 authors = [

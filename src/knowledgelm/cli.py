@@ -1,18 +1,7 @@
 """Command-line interface for KnowledgeLM.
 
-This module provides CLI commands for batch downloading NSE company announcements.
-The CLI is designed to be used both directly by users and by AI agents via the
-knowledgelm-nse agent skill.
-
-Usage:
-    knowledgelm --help
-    knowledgelm download SYMBOL --from DATE --to DATE
-    knowledgelm personnel SYMBOL --from DATE --to DATE
-    knowledgelm key-announcements SYMBOL --from DATE --to DATE
-    # knowledgelm board-outcome SYMBOL --from DATE --to DATE
-    knowledgelm shareholder-meetings SYMBOL --from DATE --to DATE
-    knowledgelm list-categories
-    knowledgelm forum URL
+This module provides CLI commands for batch downloading NSE company announcements
+and ValuePickr forum threads. Designed explicitly for LLM Agent consumption.
 """
 
 import json
@@ -29,19 +18,16 @@ from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
 from knowledgelm.core.service import KnowledgeService
 
 
-# Configure logging for CLI
 def configure_logging():
     """Configure logging to send all logs to knowledgelm.log.
 
-    This ensures that the terminal (stdout/stderr) remains completely clean
-    for primary command output and error reporting, while background process
-    details are captured in the log file.
+    Ensures stdout/stderr are clean for JSON output.
     """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         filename="knowledgelm.log",
-        filemode="w",  # Overwrite on every run
+        filemode="w",
         force=True,
     )
 
@@ -60,35 +46,50 @@ def parse_date(date_str: str) -> datetime:
 @click.group()
 @click.version_option(version="4.2.1", prog_name="knowledgelm")
 def main():
-    r"""KnowledgeLM - Batch download NSE company announcements.
+    """KnowledgeLM CLI: Data Extraction Interface for LLM Agents.
 
-    A CLI tool for downloading company filings from NSE India, designed to work
-    with AI agents and NotebookLM integration.
+    Core Abstraction:
+      This tool provides programmatic access to external data sources.
+      It always outputs strictly formatted JSON to stdout. All standard logging,
+      warnings, and progress bars are routed to `knowledgelm.log` to preserve
+      your context window.
 
-    \b
-    Quick Start:
-        knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
+    Response Schema:
+      Success: {"success": true, ...data...}
+      Failure: {"success": false, "error": "<reason>"}
 
-    \b
-    For AI Agents:
-        Run 'knowledgelm --help' to discover available commands.
-        Run 'knowledgelm download --help' for download options.
+    Command Groups:
+      fetch          : Universal data retrieval command.
+                       - `fetch nse` : Retrieve corporate filings/XBRL.
+                       - `fetch vp`  : Retrieve ValuePickr forum threads.
+      convert        : Offline PDF-to-Markdown conversion tool.
+                       - `convert file`: Safely convert a single PDF.
+                       - `convert dir` : Bulk convert a directory of PDFs.
+      list-datasets  : Enumerates valid values for `fetch nse --datasets`.
     """
     pass
 
 
-@main.command()
+@main.group()
+def fetch():
+    """Universal data retrieval command group.
+
+    Execute `fetch nse --help` or `fetch vp --help` for specific schemas.
+    """
+    pass
+
+
+@fetch.command("nse")
 @click.argument("symbol")
-@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
-@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
+@click.option("--start", "from_date", required=True, help="Date string YYYY-MM-DD.")
+@click.option("--end", "to_date", required=True, help="Date string YYYY-MM-DD.")
 @click.option(
-    "--categories",
+    "--datasets",
     default="all",
-    help="Comma-separated categories to download. Use 'all' for all categories. "
-    "Run 'knowledgelm list-categories' to see available options.",
+    help="Comma-separated keys (e.g. 'transcripts,personnel'). Use 'all' for standard collection.",
 )
 @click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
+    "--output", "-o", default=None, help="Output directory path. Defaults to ./{SYMBOL}_sources/"
 )
 @click.option(
     "--annual-reports-all",
@@ -96,33 +97,34 @@ def main():
     default=False,
     help="Download ALL annual reports regardless of date range.",
 )
-def download(
+def nse(
     symbol: str,
     from_date: str,
     to_date: str,
-    categories: str,
+    datasets: str,
     output: Optional[str],
     annual_reports_all: bool,
 ):
-    r"""Download company filings from NSE India.
+    """Fetch Corporate Filings and XBRL structured data from NSE India.
 
-    \b
-    Examples:
-        knowledgelm download HDFCBANK --from 2023-01-01 --to 2025-01-26
-        knowledgelm download INFY --from 2020-01-01 --to 2025-01-26 \
-            --categories transcripts,credit_rating
-        knowledgelm download RELIANCE --from 2020-01-01 --to 2025-01-26 \
-            --annual-reports-all
+    Inputs:
+      symbol     : The National Stock Exchange of India ticker (e.g., HDFCBANK).
+      --start    : YYYY-MM-DD filtering bound.
+      --end      : YYYY-MM-DD filtering bound.
+      --datasets : Specific data types to fetch. Run `list-datasets` to see options.
 
-    \b
-    Available Categories:
-        transcripts, investor_presentations, credit_rating, annual_reports,
-        related_party_txns, press_releases, issue_documents
+    Output Schema (JSON):
+      {
+        "success": true,
+        "symbol": "HDFCBANK",
+        "output_directory": "/absolute/path/to/HDFCBANK_sources",
+        "date_range": {"from": "2024-01-01", "to": "2024-01-31"},
+        "downloads": {"transcript": 2, "personnel change": 1},
+        "total_files": 3
+      }
     """
-    # Configure logging first
     configure_logging()
 
-    # Parse dates
     try:
         start = parse_date(from_date)
         end = parse_date(to_date)
@@ -131,20 +133,17 @@ def download(
         click.echo(json.dumps({"error": str(e), "success": False}))
         sys.exit(1)
 
-    # Determine output directory
     folder_name = output if output else f"{symbol.upper()}_sources"
 
-    # Build options dict
-    if categories.lower() == "all":
+    if datasets.lower() == "all":
         selected_categories = list(DOWNLOAD_CATEGORIES_CONFIG.keys())
     else:
-        selected_categories = [c.strip() for c in categories.split(",")]
+        selected_categories = [c.strip() for c in datasets.split(",")]
 
-    # Validate categories
     valid_cats = set(DOWNLOAD_CATEGORIES_CONFIG.keys())
     invalid = set(selected_categories) - valid_cats
     if invalid:
-        msg = f"Invalid categories: {', '.join(invalid)}. Valid: {', '.join(valid_cats)}"
+        msg = f"Invalid datasets: {', '.join(invalid)}. Valid: {', '.join(valid_cats)}"
         logger.error(msg)
         click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
@@ -154,7 +153,6 @@ def download(
         for cat, cfg in DOWNLOAD_CATEGORIES_CONFIG.items()
     }
 
-    # Run download
     try:
         service = KnowledgeService(str(Path.cwd()))
         announcements, counts = service.process_request(
@@ -175,10 +173,8 @@ def download(
             "total_files": sum(counts.values()),
         }
 
-        # Output result as JSON to stdout (always)
         click.echo(json.dumps(result, indent=2))
 
-        # Log process summary (intermediate logs already sent to knowledgelm.log)
         logger.info(f"Producing JSON result for {symbol.upper()}")
         logger.info(f"✓ Downloaded filings for {symbol.upper()}")
         logger.info(f"  Output: {result['output_directory']}")
@@ -198,61 +194,39 @@ def download(
         sys.exit(1)
 
 
-@main.command("list-categories")
-def list_categories():
-    """List available download categories.
-
-    Shows all filing types that can be downloaded from NSE.
-    """
-    configure_logging()
-
-    categories = {
-        cat: {
-            "label": cfg["label"],
-            "config_key": cfg["enabled_arg"],
-        }
-        for cat, cfg in DOWNLOAD_CATEGORIES_CONFIG.items()
-    }
-
-    # Always output JSON to stdout
-    click.echo(json.dumps(categories, indent=2))
-
-    # Log results to knowledgelm.log
-    logger.info("Available categories:")
-    for cat, info in categories.items():
-        logger.info(f"  {cat}: {info['label']}")
-    logger.info(f"JSON Result: {json.dumps(categories)}")
-
-
-@main.command("forum")
+@fetch.command("vp")
 @click.argument("url")
-@click.option("--symbol", "-s", help="Company symbol for the output folder (e.g., HDFCBANK).")
+@click.option("--symbol", "-s", help="Stock symbol context (influences output directory).")
 @click.option(
     "--output",
     "-o",
     default=None,
     help="Output directory path. Defaults to ./misc_sources/forum_valuepickr/ if no symbol is provided.",
 )
-def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
-    """Download a ValuePickr forum thread as a clean PDF.
+def vp(url: str, symbol: Optional[str], output: Optional[str]):
+    """Fetch a ValuePickr forum thread as a clean, multimodal PDF and top links from the thread into a .md file.
 
-    Args:
-        url: The full URL of the ValuePickr thread.
-        symbol: Optional company symbol for the filename and folder.
-        output: Optional custom output directory.
+    Inputs:
+      url     : The fully qualified URL of the target thread.
+      --symbol: If provided, correlates the export into the matching `{SYMBOL}_sources` folder.
+
+    Output Schema (JSON):
+      {
+        "success": true,
+        "title": "Thread Title",
+        "posts_count": 150,
+        "output_path": "/absolute/path/to/forum_thread.pdf",
+        "references_path": "/absolute/path/to/forum_links.md"
+      }
     """
     configure_logging()
 
     try:
         client = ForumClient()
-
-        # 1. Fetch data
         logger.info(f"Fetching thread data from {url}...")
-
         thread_data = client.get_full_thread(url)
         slug = client.parse_topic_url(url)[0]
 
-        # 2. Determine output directory
         if symbol:
             base_folder = f"{symbol.upper()}_sources"
         else:
@@ -264,18 +238,13 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
             output_dir = Path(output) / "forum_valuepickr"
 
         output_dir.mkdir(parents=True, exist_ok=True)
-
         output_path = output_dir / "forum_thread.pdf"
 
-        # 3. Generate PDF
         logger.info(f"Generating PDF with {len(thread_data['posts'])} posts...")
-
         generator = PDFGenerator()
         generator.generate_thread_pdf(thread_data, output_path)
 
-        # 4. Extract references
         logger.info("Extracting external references...")
-
         ref_extractor = ReferenceExtractor()
         ref_content = ref_extractor.extract_references(thread_data)
 
@@ -291,10 +260,8 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
             "references_path": str(ref_path.absolute()),
         }
 
-        # Always output JSON to stdout
         click.echo(json.dumps(result, indent=2))
 
-        # Log process summary
         logger.info(f"✓ Successfully saved thread to {result['output_path']}")
         logger.info(f"✓ References extracted to {result['references_path']}")
         logger.info(f"JSON Result: {json.dumps(result)}")
@@ -305,124 +272,179 @@ def download_forum(url: str, symbol: Optional[str], output: Optional[str]):
         sys.exit(1)
 
 
-@main.command()
-@click.argument("symbol")
-@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
-@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
-@click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
-)
-def personnel(symbol: str, from_date: str, to_date: str, output: Optional[str]):
-    r"""Query board-level personnel changes via XBRL.
-
-    Saves parsed JSON to the output directory and returns a summary.
-
-    \b
-    Examples:
-        knowledgelm personnel HDFCBANK --from 2023-01-01 --to 2025-01-26
+@main.command("list-datasets")
+def list_datasets():
+    """List valid values for the `fetch nse --datasets` parameter.
+    
+    Output Schema (JSON):
+      {
+        "datasets": {
+          "transcripts": "Analyst call transcripts",
+          "annual_reports": "Annual reports",
+          "personnel": "Personnel changes (XBRL)",
+          "shm": "Shareholder meetings (XBRL)"
+        }
+      }
     """
-    _query_xbrl(symbol, "personnel", from_date, to_date, output)
-
-
-@main.command("key-announcements")
-@click.argument("symbol")
-@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
-@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
-@click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
-)
-def key_announcements(symbol: str, from_date: str, to_date: str, output: Optional[str]):
-    r"""Query key corporate announcements (Reg 30, fund raising, etc.) via XBRL."""
-    _query_xbrl(symbol, "key_announcements", from_date, to_date, output)
-
-
-# @main.command("board-outcome")
-# @click.argument("symbol")
-# @click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
-# @click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
-# @click.option(
-#     "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
-# )
-# def board_outcome(symbol: str, from_date: str, to_date: str, output: Optional[str]):
-#     r"""Query board meeting outcomes via XBRL."""
-#     _query_xbrl(symbol, "board_outcome", from_date, to_date, output)
-
-
-@main.command("shareholder-meetings")
-@click.argument("symbol")
-@click.option("--from", "from_date", required=True, help="Start date in YYYY-MM-DD format.")
-@click.option("--to", "to_date", required=True, help="End date in YYYY-MM-DD format.")
-@click.option(
-    "--output", "-o", default=None, help="Output directory. Defaults to ./{SYMBOL}_sources/"
-)
-def shareholder_meetings(symbol: str, from_date: str, to_date: str, output: Optional[str]):
-    r"""Query shareholder meeting announcements via XBRL."""
-    _query_xbrl(symbol, "shm", from_date, to_date, output)
-
-
-def _query_xbrl(symbol: str, category: str, from_date: str, to_date: str, output: str):
-    """Helper to run XBRL queries."""
     configure_logging()
+    
+    datasets = {}
+    for cat, cfg in DOWNLOAD_CATEGORIES_CONFIG.items():
+        datasets[cat] = cfg["label"].title()
+        if cfg.get("is_xbrl"):
+            datasets[cat] += " (XBRL/JSON)"
+            
+    result = {"datasets": datasets}
 
+    click.echo(json.dumps(result, indent=2))
+
+    logger.info("Available datasets list fetched.")
+    logger.info(f"JSON Result: {json.dumps(result)}")
+
+
+@main.group()
+def convert():
+    """Offline PDF-to-Markdown conversion command group."""
+    pass
+
+
+def _convert_single_pdf(pdf_path: Path) -> dict:
+    """Helper to convert a single PDF using MarkItDown and return stat dict."""
+    import time
+    from markitdown import MarkItDown
+    
+    start_time = time.time()
     try:
-        start = parse_date(from_date)
-        end = parse_date(to_date)
-    except click.BadParameter as e:
-        click.echo(json.dumps({"error": str(e), "success": False}))
-        sys.exit(1)
-
-    # Determine output directory (same logic as download)
-    folder_name = output if output else f"{symbol.upper()}_sources"
-    config = DOWNLOAD_CATEGORIES_CONFIG[category]
-    options = {cfg["enabled_arg"]: (c == category) for c, cfg in DOWNLOAD_CATEGORIES_CONFIG.items()}
-
-    try:
-        service = KnowledgeService(str(Path.cwd()))
-        announcements, counts = service.process_request(
-            symbol=symbol.upper(),
-            from_date=start,
-            to_date=end,
-            folder_name=folder_name,
-            options=options,
-        )
-
-        label = config["label"]
-        count = counts.get(label, 0)
-        output_dir = Path.cwd() / folder_name
+        md_converter = MarkItDown()
+        result = md_converter.convert(str(pdf_path))
         
-        if category == "personnel":
-            json_path = output_dir / "personnel_changes.json"
-        elif category == "key_announcements":
-            json_path = output_dir / "key_announcements.json"
-        elif category == "shm":
-            json_path = output_dir / "shareholder_meetings" / "shm_details.json"
-        else:
-            json_path = output_dir / f"{category}_details.json"
-
-        result = {
+        md_path = pdf_path.with_suffix(".md")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(result.text_content)
+            
+        return {
             "success": True,
-            "symbol": symbol.upper(),
-            "category": label,
-            "date_range": {"from": from_date, "to": to_date},
-            "total": count,
-            "output_path": str(json_path.absolute()) if count > 0 else None,
+            "file": pdf_path.name,
+            "output": str(md_path.absolute()),
+            "time_seconds": round(time.time() - start_time, 2),
+            "characters": len(result.text_content)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "file": pdf_path.name,
+            "error": str(e),
+            "time_seconds": round(time.time() - start_time, 2)
         }
 
-        # Always output JSON to stdout
-        click.echo(json.dumps(result, indent=2))
 
-        # Log process summary
-        if count > 0:
-            logger.info(f"✓ Found {count} {label} record(s).")
-            logger.info(f"  Parsed details saved to: {result['output_path']}")
-        else:
-            logger.info(f"No {label} records found for the given date range.")
-        logger.info(f"JSON Result: {json.dumps(result)}")
-
-    except Exception as e:
-        logger.exception(f"Failed to query {category}")
-        click.echo(json.dumps({"error": str(e), "success": False}))
+@convert.command("file")
+@click.argument("filepath")
+def convert_file(filepath: str):
+    """Convert a single PDF file to Markdown.
+    
+    Inputs:
+      filepath : Absolute or relative path to the .pdf file.
+      
+    Output Schema (JSON):
+      {
+        "success": true,
+        "file": "AR_2024.pdf",
+        "output": "/absolute/path/to/AR_2024.md",
+        "time_seconds": 125.4,
+        "characters": 1850230
+      }
+    """
+    configure_logging()
+    target_path = Path(filepath)
+    
+    if dict(target_path.absolute().parts).get(0) == "":
+        pass # Handle root correctly on various OS if needed, but Path handles standard cases.
+        
+    if not target_path.exists():
+        msg = f"File not found: {filepath}"
+        logger.error(msg)
+        click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
+        
+    if not target_path.is_file() or target_path.suffix.lower() != ".pdf":
+        msg = f"Target must be a valid .pdf file. Received: {filepath}"
+        logger.error(msg)
+        click.echo(json.dumps({"error": msg, "success": False}))
+        sys.exit(1)
+        
+    logger.info(f"Converting PDF to Markdown: {target_path.name}")
+    result = _convert_single_pdf(target_path)
+    
+    click.echo(json.dumps(result, indent=2))
+    
+    if result["success"]:
+        logger.info(f"✓ Converted {result['file']} in {result['time_seconds']}s")
+    else:
+        logger.error(f"❌ Failed to convert {result['file']}: {result.get('error')}")
+
+
+@convert.command("dir")
+@click.argument("directory")
+def convert_dir(directory: str):
+    """Convert all PDF files in a directory to Markdown.
+    
+    Inputs:
+      directory : Absolute or relative path to the directory containing PDFs.
+      
+    Output Schema (JSON):
+      {
+        "success": true,
+        "directory": "/absolute/path/to/transcripts",
+        "converted": 5,
+        "failed": 0,
+        "total_time_seconds": 34.2,
+        "results": [
+           {"file": "file1.pdf", "success": true, "time_seconds": 5.1, ...}
+        ]
+      }
+    """
+    import time
+    configure_logging()
+    target_dir = Path(directory)
+    
+    if not target_dir.exists() or not target_dir.is_dir():
+        msg = f"Directory not found or invalid: {directory}"
+        logger.error(msg)
+        click.echo(json.dumps({"error": msg, "success": False}))
+        sys.exit(1)
+        
+    pdf_files = list(target_dir.glob("*.pdf"))
+    if not pdf_files:
+        msg = f"No .pdf files found in directory: {directory}"
+        logger.warning(msg)
+        click.echo(json.dumps({"error": msg, "success": False}))
+        sys.exit(1)
+        
+    logger.info(f"Found {len(pdf_files)} PDFs in {target_dir.name}. Starting conversion...")
+    
+    start_time = time.time()
+    results = []
+    success_count = 0
+    
+    for pdf in pdf_files:
+        logger.info(f"Processing: {pdf.name}")
+        res = _convert_single_pdf(pdf)
+        results.append(res)
+        if res["success"]:
+            success_count += 1
+            
+    final_output = {
+        "success": success_count > 0,
+        "directory": str(target_dir.absolute()),
+        "converted": success_count,
+        "failed": len(pdf_files) - success_count,
+        "total_time_seconds": round(time.time() - start_time, 2),
+        "results": results
+    }
+    
+    click.echo(json.dumps(final_output, indent=2))
+    logger.info(f"Finished directory conversion. {success_count}/{len(pdf_files)} successful.")
 
 
 if __name__ == "__main__":
