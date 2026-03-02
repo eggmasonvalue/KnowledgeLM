@@ -25,7 +25,7 @@ def test_fetch_nse_success(mock_service_cls):
         result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31"])
 
         assert result.exit_code == 0
-        
+
         # Check JSON output on stdout
         data = json.loads(result.output)
         assert data["success"] is True
@@ -65,7 +65,7 @@ def test_fetch_nse_invalid_date(mock_service_cls):
         result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "invalid", "--end", "2023-01-31"])
 
         assert result.exit_code != 0
-        
+
         # Check JSON error on stdout
         data = json.loads(result.output)
         assert data["success"] is False
@@ -85,7 +85,7 @@ def test_fetch_nse_invalid_dataset(mock_service_cls):
         result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31", "--datasets", "invalid"])
 
         assert result.exit_code != 0
-        
+
         # Check JSON error on stdout
         data = json.loads(result.output)
         assert data["success"] is False
@@ -108,7 +108,7 @@ def test_fetch_nse_unexpected_error(mock_service_cls):
         result = runner.invoke(main, ["fetch", "nse", "SYMBOL", "--start", "2023-01-01", "--end", "2023-01-31"])
 
         assert result.exit_code != 0
-        
+
         # Check JSON error on stdout
         data = json.loads(result.output)
         assert data["success"] is False
@@ -126,7 +126,7 @@ def test_list_datasets():
     with runner.isolated_filesystem():
         result = runner.invoke(main, ["list-datasets"])
         assert result.exit_code == 0
-        
+
         # Check JSON on stdout
         data = json.loads(result.output)
         assert "datasets" in data
@@ -156,7 +156,7 @@ def test_fetch_vp_success(mock_extractor_cls, mock_generator_cls, mock_client_cl
     with runner.isolated_filesystem():
         result = runner.invoke(main, ["fetch", "vp", "http://url", "--symbol", "SYM"])
         assert result.exit_code == 0
-        
+
         # Check JSON on stdout
         data = json.loads(result.output)
         assert data["success"] is True
@@ -182,7 +182,7 @@ def test_fetch_vp_error(mock_client_cls):
     with runner.isolated_filesystem():
         result = runner.invoke(main, ["fetch", "vp", "http://url"])
         assert result.exit_code != 0
-        
+
         # Check JSON on stdout
         data = json.loads(result.output)
         assert data["success"] is False

@@ -6,7 +6,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from knowledgelm.config import (
+    DATE_FORMAT_DMY_DASH,
+    DATE_FORMAT_DMY_HM,
+    DATE_FORMAT_DMY_HMS,
+    DEFAULT_FILE_EXT,
     DOWNLOAD_CATEGORIES_CONFIG,
+    FILTER_ANALYST_MEET,
+    FILTER_CREDIT_RATING,
+    FILTER_INVESTOR_PRESENTATION,
+    FILTER_PRESS_RELEASE,
+    FILTER_RELATED_PARTY_TXNS,
     ISSUE_DOCS_CONFIG,
 )
 from knowledgelm.core.xbrl_harvester import XBRL_CATEGORIES, NSEXBRLHarvester
@@ -146,7 +155,7 @@ class KnowledgeService:
                 if self._matches_filter(cat_key, item):
                     url = item.get("attchmntFile")
                     if url:
-                        ext = Path(url.split("?")[0]).suffix or ".pdf"
+                        ext = Path(url.split("?")[0]).suffix or DEFAULT_FILE_EXT
                         file_name = f"{generate_standard_filename(item.get('an_dt', ''), config.get('shorthand', cat_key))}{ext}"
                         if nse_adapter.download_and_extract(url, cat_folder, file_name):
                             count += 1
@@ -167,17 +176,17 @@ class KnowledgeService:
 
         if category == "transcripts":
             return (
-                desc == "analysts/institutional investor meet/con. call updates"
+                desc == FILTER_ANALYST_MEET
                 and "transcript" in attortext
             )
         elif category == "investor_presentations":
-            return desc == "investor presentation"
+            return desc == FILTER_INVESTOR_PRESENTATION
         elif category == "press_releases":
-            return desc in ["press release", "press release (revised)"]
+            return desc in FILTER_PRESS_RELEASE
         elif category == "credit_rating":
-            return desc == "credit rating"
+            return desc == FILTER_CREDIT_RATING
         elif category == "related_party_txns":
-            return desc in ["related party transaction", "related party transactions"]
+            return desc in FILTER_RELATED_PARTY_TXNS
 
         return False
 
@@ -241,7 +250,7 @@ class KnowledgeService:
                         continue
 
                 logger.info(f"Downloading Annual Report for {yr}...")
-                ext = Path(url.split("?")[0]).suffix or ".pdf"
+                ext = Path(url.split("?")[0]).suffix or DEFAULT_FILE_EXT
                 file_name = f"{generate_standard_filename(str(yr), shorthand)}{ext}"
                 if adapter.download_and_extract(url, ar_folder, file_name):
                     count += 1
@@ -377,7 +386,7 @@ class KnowledgeService:
 
                     # Attempt to extract some temporal info from doc (e.g. fileDate, date_attachmnt)
                     temporal = str(doc.get("fileDate", doc.get("date_attachmnt", "")))
-                    ext = Path(url.split("?")[0]).suffix or ".pdf"
+                    ext = Path(url.split("?")[0]).suffix or DEFAULT_FILE_EXT
                     file_name = f"{generate_standard_filename(temporal, config.get('shorthand', 'IssueDoc'))}{ext}"
 
                     if adapter.download_and_extract(url, doc_folder, file_name):
@@ -445,7 +454,6 @@ class KnowledgeService:
             adapter: Initialized NSEAdapter for fetching announcements and documents.
             download_dir: Root download directory for this symbol.
         """
-
         # We need general announcements to find the PDF.
         # Since we have a list of records, we can determine the date range needed.
         if not records:
@@ -457,7 +465,7 @@ class KnowledgeService:
                 dt_str = r.get("broadcastDateTime")
                 if dt_str:
                     try:
-                        dt = datetime.strptime(dt_str, "%d-%b-%Y %H:%M:%S")
+                        dt = datetime.strptime(dt_str, DATE_FORMAT_DMY_HMS)
                         dates.append(dt)
                     except ValueError:
                         pass
@@ -497,7 +505,7 @@ class KnowledgeService:
                 continue
 
             try:
-                xbrl_dt = datetime.strptime(xbrl_dt_str, "%d-%b-%Y %H:%M:%S")
+                xbrl_dt = datetime.strptime(xbrl_dt_str, DATE_FORMAT_DMY_HMS)
             except ValueError:
                 continue
 
@@ -510,7 +518,7 @@ class KnowledgeService:
                 if not g_dt_str:
                     continue
                 try:
-                    g_dt = datetime.strptime(g_dt_str, "%d-%b-%Y %H:%M:%S")
+                    g_dt = datetime.strptime(g_dt_str, DATE_FORMAT_DMY_HMS)
                 except ValueError:
                     continue
 
@@ -524,7 +532,7 @@ class KnowledgeService:
 
             for cand in candidates:
                 url = cand.get("attchmntFile", "")
-                if not url or not url.lower().endswith(".pdf"):
+                if not url or not url.lower().endswith(DEFAULT_FILE_EXT):
                     continue
 
                 desc = cand.get("desc", "").lower()
@@ -546,7 +554,7 @@ class KnowledgeService:
                     score += 3
 
                 # Check for "Ad" in filename as a negative signal (e.g. PostalBallotAd.pdf)
-                if "ad.pdf" in url.lower() or "_ad" in url.lower():
+                if f"ad{DEFAULT_FILE_EXT}" in url.lower() or "_ad" in url.lower():
                     score -= 5
 
                 if score > 0:
@@ -560,12 +568,12 @@ class KnowledgeService:
 
                 shm_config = DOWNLOAD_CATEGORIES_CONFIG.get("shm", {})
                 shorthand = shm_config.get("shorthand", "SHM")
-                
+
                 # Download to shm folder instead of temp
                 shm_dir = download_dir / shm_config.get("folder_name", "shareholder_meetings") / "shm_notices"
                 shm_dir.mkdir(parents=True, exist_ok=True)
 
-                ext = Path(target_pdf_url.split("?")[0]).suffix or ".pdf"
+                ext = Path(target_pdf_url.split("?")[0]).suffix or DEFAULT_FILE_EXT
                 file_name = f"{generate_standard_filename(xbrl_dt_str, shorthand)}{ext}"
 
                 if adapter.download_and_extract(target_pdf_url, shm_dir, file_name):
@@ -609,8 +617,8 @@ class KnowledgeService:
         types = XBRL_CATEGORIES[category]
 
         # Convert datetime to dd-mm-yyyy for the harvester
-        start_str = from_date.strftime("%d-%m-%Y")
-        end_str = to_date.strftime("%d-%m-%Y")
+        start_str = from_date.strftime(DATE_FORMAT_DMY_DASH)
+        end_str = to_date.strftime(DATE_FORMAT_DMY_DASH)
 
         raw_results = harvester.harvest_xbrl(
             symbol=symbol,
@@ -631,7 +639,7 @@ class KnowledgeService:
         # Sort by date descending if possible
         try:
             flattened.sort(
-                key=lambda x: datetime.strptime(x.get("an_dt", ""), "%d-%b-%Y %H:%M"),
+                key=lambda x: datetime.strptime(x.get("an_dt", ""), DATE_FORMAT_DMY_HM),
                 reverse=True,
             )
         except Exception:

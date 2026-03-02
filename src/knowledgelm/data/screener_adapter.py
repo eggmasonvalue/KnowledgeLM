@@ -14,7 +14,9 @@ import urllib3
 from bs4 import BeautifulSoup
 
 from knowledgelm.config import (
+    DEFAULT_REQUEST_TIMEOUT,
     DOWNLOAD_CATEGORIES_CONFIG,
+    ICRA_BASE_RATING_URL,
     SCREENER_BASE_URL,
     SCREENER_DOCS_SELECTOR,
     SCREENER_TIMEOUT,
@@ -49,7 +51,7 @@ def _get_icra_pdf_url(original_url: str) -> Optional[str]:
             # Extract ID from query parameter
             if "Id=" in original_url:
                 report_id = original_url.split("Id=")[-1].split("&")[0]
-                return f"https://www.icra.in/Rating/ShowRationalReportFilePdf/{report_id}"
+                return ICRA_BASE_RATING_URL.format(report_id=report_id)
         except Exception as e:
             logger.warning(f"Failed to parse ICRA URL {original_url}: {e}")
     return None
@@ -234,7 +236,7 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
                 try:
                     with redirect_output_to_logger(logger):
                         resp = requests.get(
-                            target_url, stream=True, timeout=30, verify=False, headers=headers
+                            target_url, stream=True, timeout=DEFAULT_REQUEST_TIMEOUT, verify=False, headers=headers
                         )
                 except requests.SSLError:
                     logger.warning(f"SSL Error for {target_url}, skipping.")
