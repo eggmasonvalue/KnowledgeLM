@@ -280,29 +280,6 @@ class KnowledgeService:
         primary_count = download_credit_ratings_from_screener(symbol, root_dir)
         return primary_count
 
-        # NOTE: NSE announcements fallback has been disabled as per user request.
-        # Screener.in is now the sole source for credit ratings.
-        # logger.info("Screener returned 0 credit ratings. Trying NSE announcements fallback...")
-
-        # # 2. Fallback to NSE announcements
-        # count = 0
-        # downloaded_files = set(f.name for f in cat_folder.glob("*"))
-
-        # for item in get_announcements_func():
-        #     if self._matches_filter("credit_rating", item):
-        #         url = item.get("attchmntFile")
-        #         if not url:
-        #             continue
-        #         filename = url.split("/")[-1]
-        #         if filename in downloaded_files:
-        #             continue
-
-        #         logger.info(f"Downloading credit rating from NSE: {filename}")
-        #         if adapter.download_and_extract(url, cat_folder):
-        #             count += 1
-        #             downloaded_files.add(filename)
-        # return count
-
     def _process_issue_documents(
         self,
         symbol: str,
