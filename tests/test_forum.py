@@ -21,8 +21,30 @@ def test_parse_topic_url():
 def test_parse_topic_url_invalid():
     """Test invalid URL parsing."""
     client = ForumClient()
-    with pytest.raises(ValueError):
-        client.parse_topic_url("https://example.com/invalid")
+
+    # Invalid domain
+    with pytest.raises(ValueError, match="Invalid ValuePickr URL domain"):
+        client.parse_topic_url("https://example.com/t/slug/123")
+
+    # Invalid scheme
+    with pytest.raises(ValueError, match="Invalid ValuePickr URL scheme"):
+        client.parse_topic_url("ftp://forum.valuepickr.com/t/slug/123")
+
+    # Missing scheme
+    with pytest.raises(ValueError, match="Invalid ValuePickr URL scheme"):
+        client.parse_topic_url("forum.valuepickr.com/t/slug/123")
+
+    # Invalid path format (missing ID)
+    with pytest.raises(ValueError, match="Invalid ValuePickr URL path"):
+        client.parse_topic_url("https://forum.valuepickr.com/t/slug")
+
+    # Invalid path format (wrong prefix)
+    with pytest.raises(ValueError, match="Invalid ValuePickr URL path"):
+        client.parse_topic_url("https://forum.valuepickr.com/topic/slug/123")
+
+    # Path traversal / malicious path
+    with pytest.raises(ValueError, match="Invalid ValuePickr URL path"):
+        client.parse_topic_url("https://forum.valuepickr.com/t/../../etc/passwd/123")
 
 def test_fetch_topic_data(mock_requests):
     """Test fetching topic metadata."""
