@@ -207,25 +207,171 @@ def test_extract_references_legacy():
             {
                 "post_number": 1,
                 "created_at": "2023-01-01T10:00:00Z",
-                "cooked": '<p>Check <a href="http://external.com/1">Link 1</a></p>'
+                "cooked": '<p>Check <a href="http://external.com/1">Link 1</a></p>',
             },
             {
                 "post_number": 2,
-                "cooked": '<p>Internal <a href="https://forum.valuepickr.com/t/1">Internal</a></p>'
-            }
-        ]
+                "created_at": "2023-01-01T11:00:00Z",
+                "cooked": '<p>Internal <a href="https://forum.valuepickr.com/t/1">Internal</a></p>',
+            },
+        ],
     }
 
-    # We force the use of _extract_references_from_html by calling it directly
-    # OR by ensuring 'links' is empty (which triggers the "No external references" message in the main method,
-    # unless we modify the code to fallback.
-    # Looking at forum.py:
-    # if not links: return ... "No external references found"
-    # It seems the fallback call is commented out: # return self._extract_references_from_html(thread_data)
+    # Create mock BeautifulSoup objects
+    # Post 1
+    mock_link1 = MagicMock()
+    mock_link1.__getitem__.side_effect = lambda key: {"href": "http://external.com/1"}[key]
+    mock_link1.get_text.return_value = "Link 1"
 
-    # So we must call the legacy method directly to test it.
-    md = extractor._extract_references_from_html(thread_data)
+    mock_soup1 = MagicMock()
+    mock_soup1.find_all.return_value = [mock_link1]
+
+    # Post 2
+    mock_link2 = MagicMock()
+    mock_link2.__getitem__.side_effect = lambda key: {"href": "https://forum.valuepickr.com/t/1"}[
+        key
+    ]
+    mock_link2.get_text.return_value = "Internal"
+
+    mock_soup2 = MagicMock()
+    mock_soup2.find_all.return_value = [mock_link2]
+
+    with patch("knowledgelm.core.forum.BeautifulSoup") as mock_bs:
+        mock_bs.side_effect = [mock_soup1, mock_soup2]
+
+        # So we must call the legacy method directly to test it.
+        md = extractor._extract_references_from_html(thread_data)
 
     assert "Link 1" in md
     assert "http://external.com/1" in md
-    assert "Internal" not in md # Should be skipped
+    assert "Internal" not in md  # Should be skipped
+
+
+def test_extract_references_from_html_filtering():
+    """Test filtering logic in _extract_references_from_html."""
+    extractor = ReferenceExtractor()
+    thread_data = {
+        "title": "Thread",
+        "slug": "slug",
+        "id": 123,
+        "posts": [
+            {
+                "post_number": 1,
+                "cooked": "links",
+            }
+        ],
+    }
+
+    # Helper to create a mock link
+    def create_mock_link(href, text="Link"):
+        m = MagicMock()
+        m.__getitem__.side_effect = lambda key: href if key == "href" else None
+        m.get_text.return_value = text
+        return m
+
+    mock_links = [
+        create_mock_link("http://valid.com", "Valid"),
+        create_mock_link("https://valid.com", "Valid Secure"),
+        create_mock_link("ftp://invalid.com", "FTP"),  # Not http
+        create_mock_link("/relative", "Relative"),  # Relative
+        create_mock_link("#anchor", "Anchor"),  # Anchor
+        create_mock_link("https://forum.valuepickr.com/t/1", "Internal"),  # Internal
+        create_mock_link("", "Empty"),  # Empty
+        create_mock_link("http://valid.com", "Duplicate"),  # Duplicate URL
+    ]
+
+    mock_soup = MagicMock()
+    mock_soup.find_all.return_value = mock_links
+
+    with patch("knowledgelm.core.forum.BeautifulSoup", return_value=mock_soup):
+        md = extractor._extract_references_from_html(thread_data)
+
+    assert "Valid" in md
+    assert "Valid Secure" in md
+    assert "FTP" not in md
+    assert "Relative" not in md
+    assert "Anchor" not in md
+    assert "Internal" not in md
+    assert "Duplicate" not in md  # Should only see the first occurrence
+
+
+def test_extract_references_from_html_sanitization():
+    """Test title sanitization in _extract_references_from_html."""
+    extractor = ReferenceExtractor()
+    thread_data = {
+        "title": "Thread",
+        "slug": "slug",
+        "id": 123,
+        "posts": [
+            {
+                "post_number": 1,
+                "cooked": "links",
+            }
+        ],
+    }
+
+    long_title = "A" * 150
+    newline_title = "Title with\nNewline"
+
+    def create_mock_link(href, text):
+        m = MagicMock()
+        m.__getitem__.side_effect = lambda key: href if key == "href" else None
+        m.get_text.return_value = text
+        return m
+
+    mock_links = [
+        create_mock_link("http://long.com", long_title),
+        create_mock_link("http://newline.com", newline_title),
+        create_mock_link("http://notext.com", "   "),  # Should fallback to "Link"
+    ]
+
+    mock_soup = MagicMock()
+    mock_soup.find_all.return_value = mock_links
+
+    with patch("knowledgelm.core.forum.BeautifulSoup", return_value=mock_soup):
+        md = extractor._extract_references_from_html(thread_data)
+
+    # Check truncation (100 chars + ...)
+    assert "A" * 100 + "..." in md
+    # Check newline replacement
+    assert "Title with Newline" in md
+    # Check fallback text
+    assert "[Link](http://notext.com)" in md
+
+
+def test_extract_references_from_html_edge_cases():
+    """Test edge cases in _extract_references_from_html."""
+    extractor = ReferenceExtractor()
+    thread_data = {
+        "title": "Thread",
+        "slug": "slug",
+        "id": 123,
+        "posts": [
+            {"post_number": 1, "hidden": True, "cooked": '<a href="http://hidden.com">Hidden</a>'},
+            {"post_number": 2, "cooked": ""},  # Empty content
+            {"post_number": 3},  # Missing cooked
+        ],
+    }
+
+    md = extractor._extract_references_from_html(thread_data)
+
+    assert "hidden.com" not in md
+    assert "No external references found" in md
+
+
+def test_extract_references_from_html_no_refs():
+    """Test _extract_references_from_html when no references are found."""
+    extractor = ReferenceExtractor()
+    thread_data = {
+        "title": "Empty Thread",
+        "posts": [{"post_number": 1, "cooked": "<p>No links here</p>"}],
+    }
+
+    mock_soup = MagicMock()
+    mock_soup.find_all.return_value = []
+
+    with patch("knowledgelm.core.forum.BeautifulSoup", return_value=mock_soup):
+        md = extractor._extract_references_from_html(thread_data)
+
+    assert "No external references found" in md
+    assert "Empty Thread" in md

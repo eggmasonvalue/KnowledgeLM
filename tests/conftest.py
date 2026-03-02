@@ -9,6 +9,37 @@ import pytest
 mock_nse_module = MagicMock()
 sys.modules["nse"] = mock_nse_module
 
+# Mock 'nse_xbrl_parser' library (not installed)
+mock_nse_xbrl_parser = MagicMock()
+sys.modules["nse_xbrl_parser"] = mock_nse_xbrl_parser
+
+# Mock 'markitdown' library
+mock_markitdown = MagicMock()
+sys.modules["markitdown"] = mock_markitdown
+
+# Mock 'urllib3' library
+mock_urllib3 = MagicMock()
+sys.modules["urllib3"] = mock_urllib3
+
+# Mock 'requests' library
+sys.modules["requests"] = MagicMock()
+
+# Mock 'bs4' library
+sys.modules["bs4"] = MagicMock()
+
+# Mock 'selenium' library
+sys.modules["selenium"] = MagicMock()
+sys.modules["selenium.webdriver"] = MagicMock()
+sys.modules["selenium.webdriver.chrome"] = MagicMock()
+sys.modules["selenium.webdriver.chrome.options"] = MagicMock()
+sys.modules["selenium.webdriver.chrome.service"] = MagicMock()
+sys.modules["selenium.webdriver.common"] = MagicMock()
+sys.modules["selenium.webdriver.common.print_page_options"] = MagicMock()
+
+# Mock 'click' library
+sys.modules["click"] = MagicMock()
+sys.modules["click.testing"] = MagicMock()
+
 # We have installed requests, bs4, selenium, click. So we don't need to mock them in sys.modules.
 
 @pytest.fixture
