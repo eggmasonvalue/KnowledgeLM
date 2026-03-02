@@ -57,9 +57,7 @@ class ForumClient:
         parsed_url = urllib.parse.urlparse(url)
 
         if parsed_url.scheme not in ("http", "https"):
-            raise ValueError(
-                f"Invalid ValuePickr URL scheme: {url}. Expected http or https."
-            )
+            raise ValueError(f"Invalid ValuePickr URL scheme: {url}. Expected http or https.")
 
         if parsed_url.netloc != "forum.valuepickr.com":
             raise ValueError(
@@ -425,13 +423,18 @@ class ReferenceExtractor:
         # Sort by post number
         sorted_post_nums = sorted(links_by_post.keys())
 
+        # Precompute post lookup by post_number to avoid O(N) lookup in the loop
+        posts_by_number = {
+            p.get("post_number"): p
+            for p in thread_data.get("posts", [])
+            if p.get("post_number") is not None
+        }
+
         for post_num in sorted_post_nums:
             post_links = links_by_post[post_num]
 
             # Find the post date if possible
-            post = next(
-                (p for p in thread_data.get("posts", []) if p.get("post_number") == post_num), None
-            )
+            post = posts_by_number.get(post_num)
             date_str = ""
             if post:
                 created_at = post.get("created_at", "")
@@ -526,9 +529,7 @@ class ReferenceExtractor:
                     date_str = created_at
 
                 post_num = post.get("post_number")
-                post_url = (
-                    f"{FORUM_BASE_URL}/t/{slug}/{thread_data.get('id')}/{post_num}"
-                )
+                post_url = f"{FORUM_BASE_URL}/t/{slug}/{thread_data.get('id')}/{post_num}"
 
                 md_lines.append(f"## Post #{post_num} ({date_str})")
                 md_lines.append(f"[View Post]({post_url})")
