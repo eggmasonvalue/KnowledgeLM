@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -53,13 +54,25 @@ class ForumClient:
         Raises:
             ValueError: If the URL format is invalid.
         """
+        parsed_url = urllib.parse.urlparse(url)
+
+        if parsed_url.scheme not in ("http", "https"):
+            raise ValueError(
+                f"Invalid ValuePickr URL scheme: {url}. Expected http or https."
+            )
+
+        if parsed_url.netloc != "forum.valuepickr.com":
+            raise ValueError(
+                f"Invalid ValuePickr URL domain: {url}. Expected forum.valuepickr.com."
+            )
+
         # Match patterns like:
-        # {FORUM_BASE_URL}/t/security-and-intelligence-services/20319
-        # {FORUM_BASE_URL}/t/security-and-intelligence-services/20319/123
-        match = re.search(r"/t/([^/]+)/(\d+)", url)
+        # /t/security-and-intelligence-services/20319
+        # /t/security-and-intelligence-services/20319/123
+        match = re.search(r"^/t/([^/]+)/(\d+)(?:/.*)?$", parsed_url.path)
         if not match:
             raise ValueError(
-                f"Invalid ValuePickr URL: {url}. Expected format: "
+                f"Invalid ValuePickr URL path: {url}. Expected format: "
                 f"{self.BASE_URL}/t/slug/topic_id"
             )
         return match.group(1), int(match.group(2))
