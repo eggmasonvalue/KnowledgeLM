@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Optional
 
 import requests
-import urllib3
 from bs4 import BeautifulSoup
 
 from knowledgelm.config import (
@@ -23,8 +22,6 @@ from knowledgelm.config import (
 )
 from knowledgelm.utils.file_utils import generate_standard_filename
 from knowledgelm.utils.log_utils import redirect_output_to_logger
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Conditional Selenium import for HTML-to-PDF conversion
 try:
@@ -151,7 +148,7 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
     try:
         # Security Fix: verify=True (default) set.
         with redirect_output_to_logger(logger):
-            resp = requests.get(screener_url, timeout=SCREENER_TIMEOUT)
+            resp = requests.get(screener_url, timeout=SCREENER_TIMEOUT, verify=True)
 
         if resp.status_code != 200:
             logger.warning(f"Screener.in returned {resp.status_code} for {symbol}")
@@ -236,7 +233,7 @@ def download_credit_ratings_from_screener(symbol: str, download_folder: Path) ->
                 try:
                     with redirect_output_to_logger(logger):
                         resp = requests.get(
-                            target_url, stream=True, timeout=DEFAULT_REQUEST_TIMEOUT, verify=False, headers=headers
+                            target_url, stream=True, timeout=DEFAULT_REQUEST_TIMEOUT, verify=True, headers=headers
                         )
                 except requests.SSLError:
                     logger.warning(f"SSL Error for {target_url}, skipping.")
