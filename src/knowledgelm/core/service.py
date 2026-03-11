@@ -64,9 +64,7 @@ class KnowledgeService:
         Returns:
             Tuple of (announcements_list, category_counts_dict)
         """
-        logger.info(
-            f"Starting processing request for {symbol} ({from_date} - {to_date})"
-        )
+        logger.info(f"Starting processing request for {symbol} ({from_date} - {to_date})")
 
         # 1. Setup Folder
         # Assuming the service is initialized with a base path (like CWD),
@@ -156,7 +154,9 @@ class KnowledgeService:
                     url = item.get("attchmntFile")
                     if url:
                         ext = Path(url.split("?")[0]).suffix or DEFAULT_FILE_EXT
-                        file_name = f"{generate_standard_filename(item.get('an_dt', ''), config.get('shorthand', cat_key))}{ext}"
+                        dt_str = item.get("an_dt", "")
+                        shorthand = config.get("shorthand", cat_key)
+                        file_name = f"{generate_standard_filename(dt_str, shorthand)}{ext}"
                         if nse_adapter.download_and_extract(url, cat_folder, file_name):
                             count += 1
             category_counts[label] = count
@@ -175,10 +175,7 @@ class KnowledgeService:
             return False
 
         if category == "transcripts":
-            return (
-                desc == FILTER_ANALYST_MEET
-                and "transcript" in attortext
-            )
+            return desc == FILTER_ANALYST_MEET and "transcript" in attortext
         elif category == "investor_presentations":
             return desc == FILTER_INVESTOR_PRESENTATION
         elif category == "press_releases":
@@ -266,7 +263,8 @@ class KnowledgeService:
 
         Args:
             symbol: Stock symbol.
-            get_announcements_func: Callable to get general announcements (unused, kept for signature compatibility).
+            get_announcements_func: Callable to get general announcements (unused,
+                kept for signature compatibility).
             adapter: Initialized NSEAdapter.
             root_dir: Root download directory.
 
@@ -340,8 +338,9 @@ class KnowledgeService:
                 elif company_lower:
                     # Tightened matching: Ensure company name is a significant part of the record
                     # or matches exactly to prevent "Bank of India" matching "State Bank of India"
-                    if company_lower == doc_company or \
-                       (len(company_lower) > 5 and company_lower in doc_company):
+                    if company_lower == doc_company or (
+                        len(company_lower) > 5 and company_lower in doc_company
+                    ):
                         matching.append(doc)
 
             if not matching:
@@ -364,7 +363,8 @@ class KnowledgeService:
                     # Attempt to extract some temporal info from doc (e.g. fileDate, date_attachmnt)
                     temporal = str(doc.get("fileDate", doc.get("date_attachmnt", "")))
                     ext = Path(url.split("?")[0]).suffix or DEFAULT_FILE_EXT
-                    file_name = f"{generate_standard_filename(temporal, config.get('shorthand', 'IssueDoc'))}{ext}"
+                    shorthand = config.get("shorthand", "IssueDoc")
+                    file_name = f"{generate_standard_filename(temporal, shorthand)}{ext}"
 
                     if adapter.download_and_extract(url, doc_folder, file_name):
                         count += 1
@@ -468,6 +468,18 @@ class KnowledgeService:
             logger.error(f"Failed to fetch general announcements for enrichment: {e}")
             return
 
+        # Pre-parse general announcements dates for matching
+        parsed_anns = []
+        for g_ann in general_anns:
+            g_dt_str = g_ann.get("an_dt", "")
+            if not g_dt_str:
+                continue
+            try:
+                g_dt = datetime.strptime(g_dt_str, DATE_FORMAT_DMY_HMS)
+                parsed_anns.append((g_ann, g_dt))
+            except ValueError:
+                continue
+
         for record in records:
             # Check if it's a Notice
             sub_ann = record.get("subOfAnn", "")
@@ -490,15 +502,7 @@ class KnowledgeService:
 
             # Look for match in general_anns
             candidates = []
-            for g_ann in general_anns:
-                g_dt_str = g_ann.get("an_dt", "")
-                if not g_dt_str:
-                    continue
-                try:
-                    g_dt = datetime.strptime(g_dt_str, DATE_FORMAT_DMY_HMS)
-                except ValueError:
-                    continue
-
+            for g_ann, g_dt in parsed_anns:
                 # Date Match: +/- 2 days
                 diff = abs((g_dt - xbrl_dt).days)
                 if diff <= 2:
@@ -547,7 +551,8 @@ class KnowledgeService:
                 shorthand = shm_config.get("shorthand", "SHM")
 
                 # Download to shm folder instead of temp
-                shm_dir = download_dir / shm_config.get("folder_name", "shareholder_meetings") / "shm_notices"
+                shm_folder = shm_config.get("folder_name", "shareholder_meetings")
+                shm_dir = download_dir / shm_folder / "shm_notices"
                 shm_dir.mkdir(parents=True, exist_ok=True)
 
                 ext = Path(target_pdf_url.split("?")[0]).suffix or DEFAULT_FILE_EXT
