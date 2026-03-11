@@ -103,7 +103,7 @@ class NSEAdapter:
             if original_filename.lower().endswith(".zip") or original_filename.lower().endswith(".gz"):
                 try:
                     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                        z.extractall(dest_path)
+                        self._safe_extract(z, dest_path)
                     return True
                 except zipfile.BadZipFile:
                     logger.warning(f"File from {url} claimed to be ZIP but is not. Saving raw.")
@@ -118,6 +118,18 @@ class NSEAdapter:
         except Exception as e:
             logger.error(f"Error during robust download/extract of {url}: {e}")
             return False
+
+    def _safe_extract(self, zf: zipfile.ZipFile, extract_path: Path):
+        """Safely extract ZIP members to prevent Zip Slip (path traversal)."""
+        resolved_extract_path = extract_path.resolve()
+        for member in zf.infolist():
+            # Calculate the absolute target path for the member
+            target_path = (resolved_extract_path / member.filename).resolve()
+            # Ensure the target path is still within the extraction directory
+            if not target_path.is_relative_to(resolved_extract_path):
+                logger.warning(f"Skipping malicious ZIP member: {member.filename}")
+                continue
+            zf.extract(member, resolved_extract_path)
 
     def get_issue_documents(self, api_path: str, params: Dict[str, str]) -> List[Dict[str, Any]]:
         """Fetch issue documents from an NSE corporate filings endpoint.
