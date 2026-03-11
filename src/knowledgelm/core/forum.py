@@ -8,10 +8,10 @@ import shutil
 import subprocess
 import tempfile
 import time
-import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -54,7 +54,7 @@ class ForumClient:
         Raises:
             ValueError: If the URL format is invalid.
         """
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urlparse(url)
 
         if parsed_url.scheme not in ("http", "https"):
             raise ValueError(f"Invalid ValuePickr URL scheme: {url}. Expected http or https.")
@@ -150,12 +150,12 @@ class ForumClient:
         all_posts = initial_posts[:]
 
         # Discourse allows fetching posts in batches
-        BATCH_SIZE = 200  # Discourse usually allows larger batches for ID lookups
+        batch_size = 200  # Discourse usually allows larger batches for ID lookups
 
-        for i in range(0, len(missing_ids), BATCH_SIZE):
-            batch = missing_ids[i : i + BATCH_SIZE]
+        for i in range(0, len(missing_ids), batch_size):
+            batch = missing_ids[i : i + batch_size]
             logger.info(
-                f"Fetching posts {i + 1} to {min(i + BATCH_SIZE, len(missing_ids))} "
+                f"Fetching posts {i + 1} to {min(i + batch_size, len(missing_ids))} "
                 f"of {len(missing_ids)} remaining..."
             )
 
