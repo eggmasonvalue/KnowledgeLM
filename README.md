@@ -1,6 +1,6 @@
 # KnowledgeLM 🧠
 
-[![Version](https://img.shields.io/badge/version-4.2.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.1.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Built with uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
 
@@ -8,63 +8,58 @@ A research companion for **NotebookLM** that automates the collection of NSE com
 
 ## 🚀 Instant Setup (AI Agents)
 
-Install the [knowledgelm-nse](https://github.com/eggmasonvalue/knowledgelm-nse) agent skill using
+Install the [knowledgelm-nse](https://github.com/eggmasonvalue/knowledgelm-nse) agent skill using:
 
 > `npx skills add eggmasonvalue/knowledgelm-nse`
 
-
-This skill allows your AI agent to batch download investor materials (transcripts, presentations, credit ratings, annual reports) for Indian publicly listed companies and integrate them into NotebookLM for deep fundamental analysis.
+This skill allows your AI agent to batch download a comprehensive bundle of investor materials(exchange filings - .pdfs and parsed XBRLs) and valuepickr forum thread for Indian publicly listed companies and optionally integrate them into NotebookLM for deep fundamental analysis.
 
 ---
 
 ## ✨ Features
 
-- **Agent-First**: Optimized for LLMs with standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and silent execution (primary output is JSON) to preserve the context window.
-- **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds.
-- **Granular XBRL Parsing**: Extracts fine-grained facts (Personnel Changes, Board Outcomes, Shareholder Meetings) into clean JSON using our standalone, highly optimized `nse-xbrl-parser` offline resolution engine.
-- **Issue Documents**: IPO prospectus, rights offers, QIP placements, information memoranda, and scheme documents — unified across 5 NSE endpoints with inconsistent schemas, unreliable metadata, and mixed archive formats so you don't have to be.
+- **Agent-First**: Optimized for LLMs with a standardized [Agent Skill](.agent/skills/knowledgelm-nse/SKILL.md), and strictly formatted JSON output to `stdout` to preserve the context window.
+- **Batch Downloads**: NSE lacks bulk extraction; KnowledgeLM fetches filings by category in seconds via `fetch nse`.
+- **Granular XBRL Parsing**: Extracts fine-grained facts (Personnel Changes/Resignations, Board Outcomes, Shareholder Meetings) into clean JSON using our standalone, highly optimized `nse-xbrl-parser` offline resolution engine.
+- **Issue Documents**: IPO prospectus, rights offers, QIP placements, information memoranda, and scheme documents — unified across 5 NSE endpoints.
+- **Markdown Conversion**: Built-in `convert` commands to transform PDFs into LLM-ready Markdown.
 - **NotebookLM Synergy**: Purpose-built commands to facilitate source injection and bundled prompt templates for audio overviews.
-- **Credit Rating Extraction**: High-fidelity extraction and PDF conversion of credit ratings from Screener.in.
-- **ValuePickr Forum Export**: Export entire forum threads to clean, research-ready PDFs with reference extraction.
+- **ValuePickr Forum Export**: Export entire forum threads to clean, research-ready PDFs with reference extraction via `fetch vp`. Besides, Valuepickr forum thread .pdfs are formatted for a distraction-free reading experience for humans.
 - **Interactive UI**: Browse and download individual filings (Resignations, Press Releases, etc.) via Streamlit.
 
-### 🐧 ARM / Linux Setup (Termux, Raspberry Pi, Android AVF)
+## 🐧 ARM / Linux Setup
 
 On ARM Linux devices, official Selenium Manager binaries are unavailable. You must manually install `chromedriver` using your system's package manager.
 
 ```bash
 # Example (Debian/Ubuntu/Termux):
-sudo apt install chromium-driver  # Package names vary (e.g. chromium, chromium-chromedriver, etc.)
+sudo apt install chromium-driver  # Package names vary
 ```
 
-**Requirement**: Ensure `chromedriver` is available in your `$PATH`. The tool will automatically detect and use it.
+**Requirement**: Ensure `chromedriver` is available in your `$PATH`.
 
-## ️ Manual Installation & Usage
-
-If you prefer to use the tool directly from your terminal:
+## 🛠️ Manual Installation & Usage
 
 ### CLI Usage
 
 ```bash
-# Install from PyPI (Standard usage)
-uv tool install knowledgelm
+# Install from PyPI
+uv tool install knowledgelm --upgrade
 
-# Alternatively, for development or installing from source code (.zip/clone):
-unzip knowledgelm-main.zip
-cd knowledgelm-main
-uv tool install .
+# Fetch corporate filings (NSE)
+knowledgelm fetch nse HDFCBANK --start 2024-01-01 --end 2025-01-26 --datasets transcripts,annual_reports
 
-# To run the development version directly without installing:
-uv run knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
+# Fetch personnel changes/resignations (XBRL)
+knowledgelm fetch nse RELIANCE --start 2024-01-01 --end 2025-01-26 --datasets personnel
 
-# Download filings
-knowledgelm download HDFCBANK --from 2024-01-01 --to 2025-01-26
+# Fetch issue documents (IPO, rights, QIP, schemes)
+knowledgelm fetch nse SWIGGY --start 2020-01-01 --end 2025-12-31 --datasets issue_documents
 
-# Download issue documents (IPO, rights, QIP, schemes)
-knowledgelm download SWIGGY --from 2020-01-01 --to 2025-12-31 --categories issue_documents
+# Export forum thread (ValuePickr)
+knowledgelm fetch vp "https://forum.valuepickr.com/t/hdfc-bank-limited/123" --symbol HDFCBANK
 
-# Export forum thread
-knowledgelm forum "https://forum.valuepickr.com/t/hdfc-bank-limited/123" --symbol HDFCBANK
+# Convert downloaded PDFs to Markdown
+knowledgelm convert dir "./HDFCBANK_sources/transcripts/"
 ```
 
 ### Web UI

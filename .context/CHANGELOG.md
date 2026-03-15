@@ -1,212 +1,50 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] - 2026-03-15
 
 ### Added
-- **Standardized PDF Filenames**: Implemented dynamic generation of standardized filenames for downloaded PDFs across all endpoints (NSE and Screener). Files are now saved using an ISO-8601 formatted date prefix and category shorthand (e.g., `2024_AR.pdf` or `2025-01-17_Transcript.pdf`). This dramatically improves LLM context framing compared to random or opaque source filenames (e.g., `AR_12345.pdf` or `SE_Intimation.pdf`).
-- **PDF-to-Markdown Converter (`convert`)**: Added a standalone `convert` CLI group with `file` and `dir` subcommands leveraging `markitdown` for high-quality LLM context extraction. Evaluated as a post-processor (rather than injected inline into `fetch nse`) to prevent massive network timeouts caused by 2-minute+ CPU cycles rendering 100+ page ARs.
-- **Unified Fetch CLI**: Completely rewrote `cli.py` to use a universal `fetch nse` and `fetch vp` verb/noun structure, removing `download`, `forum`, `personnel`, `key-announcements`, and `shareholder-meetings` as top-level commands. This drastically reduces the cognitive load for LLM Agents trying to drive the tool.
-- **LLM-Oriented Docstrings**: Rewrote all CLI `--help` strings to focus explicitly on the JSON input/output schemas of the data extraction, dropping human-oriented prose.
-- **ValuePickr Forum Support in WebUI**: Added UI elements to `app.py` for downloading ValuePickr forum threads, establishing feature parity with the CLI. Included a new checkbox and URL input under the "Select Filing Categories" section.
-- **Configurable JSON Output**: Introduced an `output_keys` configuration option in `config.py` for XBRL categories (`personnel`, `key_announcements`, and `shm`). The saved JSON files for these categories now only contain high-value fields (e.g., `xbrl_data`, `broadcastDateTime`, `local_pdf_path`) by default, rather than dumping all raw NSE metadata. This significantly improves data density for target LLMs like NotebookLM.
-
-### Documentation
-- **Production-Quality Docstrings**: Conducted a comprehensive docstring review across all Python files in the project. Expanded and added missing module, class, and method docstrings (e.g., in `KnowledgeService`, `NSEAdapter`, `NSEXBRLHarvester`, `log_utils.py`) to conform to production-quality standards.
-
-
-### Fixed
-- **Robust XBRL Resolution**: Updated `nse-xbrl-parser` to fix "Shadowed XSD" and "Relative Path Resolution" errors. This enables successful parsing of Swiggy and other recent filings that were previously falling back to the internal API due to missing schema definitions.
-- Created `scripts/build_golden_taxonomy.py` to crawl the NSE site, download all historical taxonomy zips, and automatically extract them (including nested zips) into a unified `golden_taxonomy_v1` directory.
-- Integrated XBRL harvester for granular announcement data.
-- New announcement categories: "Change in Personnel", "Key announcements", <!-- "Board Meeting Outcome", --> and "Shareholder Meetings".
-- Enhanced Streamlit UI with XBRL category selection and detailed views.
-- **Global Taxonomy Mixer**: XBRL harvester now merges all cached taxonomies to resolve "missing XSD" and version drift issues across different filing categories.
+- **Centralized Pluralization Utility (`text_utils.py`)**: Introduced a dedicated text processing utility for consistent, professional output formatting across the CLI and UI.
+- **Improved Dataset Discovery**: The `list-datasets` command now returns pluralized, user-friendly labels (e.g., "Analyst Call Transcripts") rather than raw singular labels.
 
 ### Changed
-- **New Output Directory Structure**: Renamed the default download directory from `{SYMBOL}_filings` to `{SYMBOL}_sources`. Restructured the default hierarchy and filenames for XBRL and issue document downloads (e.g., `issue_documents` to `share_issuance_docs`, `personnel_changes.json`, `shareholder_meetings/shm_notices/`).
-- **Screener Only for Credit Ratings**: Disabled the NSE announcements fallback for credit ratings. Screener.in is now the sole source to ensure high-fidelity records and PDF conversion.
-- **Lazy Loading Announcements**: Optimized `process_request` to lazy-load the general announcements from the NSE API. This significantly speeds up downloads when only category-specific or XBRL data is requested.
-- Replaced "Resignations" category with broader "Change in Personnel" based on XBRL data.
-- Upgraded `nse` dependency to `nse[server]>=2.1.0`.
-- Enabled `server=True` in `NSE` initialization for improved reliability in server environments.
-- **Consolidated Downloads**: `NSEAdapter` now uses a single, robust `download_and_extract` method ensuring all contents of ZIP archives are reliably extracted.
-- **Human-Readable Labels**: XBRL parsing now preserves original casing and spaces from the taxonomy (e.g., "Name of the company") instead of forcing `snake_case`.
+- **Premium CLI Logging**: Refactored `fetch nse` and `convert dir` log output to use dynamic pluralization (e.g., "Found 1 PDF" vs "Found 5 PDFs"), providing a more polished command-line experience.
+- **Pluralization Refactor**: Consolidated local pluralization logic in `app.py` into the shared `text_utils` module for better maintainability.
+
+### Documentation
+- **Agent Skill Overhaul (`SKILL.md`)**: Rewrote the agent skill to reflect the v5.2.0 CLI interface. Replaced all deprecated commands (`download` → `fetch nse`, `forum` → `fetch vp`, `resignations` → `--datasets personnel`), added the `convert` workflow, updated all 10 dataset keys, added the CLI JSON contract section, and included the full output structure tree.
+
+### Added
+- **Unified Fetch CLI**: Completely rewrote `cli.py` to use a universal `fetch nse` and `fetch vp` verb/noun structure, removing `download`, `forum`, `personnel`, `key-announcements`, and `shareholder-meetings` as top-level commands. This drastically reduces the cognitive load for LLM Agents trying to drive the tool.
+- **PDF-to-Markdown Converter (`convert`)**: Added a standalone `convert` CLI group with `file` and `dir` subcommands leveraging `markitdown` for high-quality LLM context extraction.
+- **Standardized PDF Filenames**: Implemented dynamic generation of standardized filenames for downloaded PDFs across all endpoints (NSE and Screener). Files are now saved using an ISO-8601 formatted date prefix and category shorthand (e.g., `2024_AR.pdf` or `2025-01-17_Transcript.pdf`).
+- **LLM-Oriented Docstrings**: Rewrote all CLI `--help` strings to focus explicitly on the JSON input/output schemas of the data extraction.
+- **ValuePickr Forum Support in WebUI**: Added UI elements to `app.py` for downloading ValuePickr forum threads.
+- **Configurable JSON Output**: Introduced an `output_keys` configuration option in `config.py` for XBRL categories (`personnel`, `key_announcements`, and `shm`).
 
 ### Fixed
+- **Resilient Fact Extraction**: Enhanced `nse-xbrl-parser` to ensure the raw XML fallback runs even if Arelle fails to resolve the official NSE taxonomy. This prevents data loss for announcements with newly published or non-standard SEBI schemas (e.g., specific "Arrest" or "Fraud" disclosures).
+- **Robust XBRL Resolution**: Updated `nse-xbrl-parser` to fix "Shadowed XSD" and "Relative Path Resolution" errors.
 - **Arelle Parsing Bugs**: Resolved a critical indentation bug where Arelle was trying to parse files that had already been deleted from the temporary directory.
-- **Verbose Fallbacks**: Added aggressive warning logs (`!!! SWITCHING TO INTERNAL API FALLBACK !!!`) if Arelle parsing ultimately fails, improving diagnostic visibility.
+- **Verbose Fallbacks**: Added aggressive warning logs (`!!! SWITCHING TO INTERNAL API FALLBACK !!!`) if Arelle parsing fails.
+
+### Changed
+- **New Output Directory Structure**: Renamed the default download directory from `{SYMBOL}_filings` to `{SYMBOL}_sources`.
+- **Screener Only for Credit Ratings**: Disabled the NSE announcements fallback for credit ratings. Screener.in is now the sole source.
+- **Lazy Loading Announcements**: Optimized `process_request` to lazy-load the general announcements from the NSE API.
+- **Human-Readable Labels**: XBRL parsing now preserves original casing and spaces from the taxonomy.
 
 ## [5.0.0] - 2026-02-15
 
 ### Features
-- **Issue Documents**: New `issue_documents` category in the `download` command for batch downloading company share issue documents from NSE:
-  - **5 Document Types**: Offer Documents (IPO prospectus/DRHP/RHP), Rights Issue drafts/finals, QIP Offer docs, Information Memoranda, and Scheme of Arrangement documents.
-  - **Smart Matching**: Uses symbol-based matching for Rights/QIP/Scheme endpoints and company-name resolution (via `equityMetaInfo`) for Offer Docs/Info Memo where NSE symbol fields are unreliable.
-  - **ZIP Handling**: Automated extraction of ZIP archives (common for draft offer documents).
-  - **Streamlit UI**: New "Issue Documents" checkbox in Download Categories.
-  - **CLI**: `knowledgelm download SYMBOL --from DATE --to DATE --categories issue_documents`
-  - **Output**: `{SYMBOL}_filings/issue_documents/{type}/` subfolder structure.
-- **Resignations CLI**: New `resignations` standalone query command returning structured JSON with dates, descriptions, and filing URLs. No files downloaded — designed as a lightweight data query for agents and investors.
+- **Issue Documents**: New `issue_documents` category in the `download` command (deprecated in 5.1.0) for batch downloading company share issue documents from NSE.
+- **Resignations CLI**: New `resignations` standalone query command (deprecated in 5.1.0 in favor of `fetch nse --datasets personnel`).
 
 ## [4.2.1] - 2026-02-14
 
 ### Documentation
 - **Formalized Agent-First Design Principles**: Added strict development guidelines to `.context/OVERVIEW.md` and `.context/CONVENTIONS.md`.
-  - Mandatory silent execution (no `print()` or `stdout`/`stderr` noise).
-  - Explicit error handling via exceptions and non-zero CLI exit codes.
-  - Requirement for log file usage (`knowledgelm.log`) for all diagnostic information to preserve LLM context window.
 
 ### Fixes
-- **Silent CLI Execution**: Refactored `cli.py` to route all informational and error messages to `knowledgelm.log` when JSON output is not requested. This ensures a clean terminal stream for AI agents.
-- **ValuePickr PDF Generator Cleanup**: 
-  - Standardized webdriver initialization in `forum.py` to match `screener_adapter.py`.
-  - Migrated to native Selenium Manager and removed the legacy `webdriver-manager` dependency.
-  - Implemented Selenium silencing (log redirection and headless flags) to preserve LLM context.
-  - Added conditional Selenium imports for improved library resilience.
-
-### Cleanup
-- **Dependency Purge**: Removed unused legacy dependencies `markdownify` and `weasyprint` from `pyproject.toml` and updated `uv.lock`.
-
-## [4.2.0] - 2026-02-11
-
-### Features
-- **Standardized Download Folders**:
-  - Renamed NSE filings download folder from `_knowledgeLM` to `_filings` (e.g., `HDFCBANK_filings`).
-  - Updated Streamlit default folder to `_filings`.
-  - **ValuePickr Dedicated Folders**: Forum downloads now save to a dedicated `SYMBOL_valuepickr` folder (or `slug_valuepickr` if symbol not provided), keeping PDF and references grouped together.
-  - Added `--symbol` (`-s`) option to `forum` command for explicit folder naming.
-
-### Fixes
-- **ARM Linux Compatibility**: Replaced `webdriver-manager` with native Selenium Manager and system-path prioritization. This fixes `Exec format error` on ARM Linux (Termux/Android) by allowing use of pre-installed `chromium-chromedriver` while maintaining zero-config support for Windows/Mac.
-- **Selenium Manager Migration**: Migrated from `webdriver-manager` to native Selenium Manager for improved driver management and compatibility.
-
-### Distribution & Scaling
-- **Skill Repository Integration**: Updated `knowledgelm-nse` agent skill submodule to the latest version.
-- **Submodule Integration**: Converted the local skill directory into a Git submodule, allowing for unified updates while maintaining standalone distribution.
-- **One-Click Installation**: Replaced manual path-based installation instructions with the standardized `npx skills add` command for better user experience and telemetry support.
-
-### UI/UX & Copy
-- **Industrial Aesthetic Polish**: Replaced "International Orange" branding with a sophisticated "Emerald Signal Green" to better align with financial research and "growth" themes.
-- **Punchier Copy**: Refined the primary landing page copy to bridge the gap between technical utility and agentic capability ("Command the full depth...").
-- **Consistent Styling**: Ensured all accent elements (LEDs, icons, highlights, borders) are synchronized with the new green theme.
-
-### Documentation
-- **Agentic Copy Refinement**: Pivoted the landing page description to explicitly highlight the "Skill" terminology and the core value proposition of feeding Indian market intelligence to NotebookLM.
-- **Setup UX**: Integrated the "Setup? Speak it into existence" tagline to emphasize frictionless agentic installation.
-
-
-## [4.1.0] - 2026-02-11
-
-### Features
-- **ValuePickr Forum Export**: New `forum` command to export entire threads from ValuePickr (Discourse) to clean, multimodal-ready PDFs
-  - Uses direct JSON API for reliable fetching (handles pagination)
-  - Headless Chrome (Selenium) for high-fidelity PDF generation with embedded images
-  - Optimized for NotebookLM: Strips noise (usernames, avatars) to maximize context density
-  - **Reference Extraction**: Uses Discourse Message metadata (JSON) to extract "Popular Links" with click counts.
-    - *HTML parsing logic retained as disabled fallback for future-proofing.*
-  - **Typography**: Enhanced readability with Georgia/Serif fonts and relaxed line height
-  - **Silent Progress Streams**: Redirected all background logs and progress messages to `knowledgelm.log` (overwritten on every run).
-    - **Clean Stdout/Stderr**: Terminal streams are now reserved exclusively for final results and actionable exceptions, preventing "context pollution" for AI agents.
-    - **High-Signal Error Handling**: Maintained explicit exception reporting on the terminal to ensure failure states are correctly interpreted by agents.
-### Architecture
-- **External APIs**:
-  - **NSE India**: Primary source for filenames and filing metadata (via `NSEAdapter`).
-  - **NSE XBRL API**: Source for granular, structured corporate announcements (via `NSEXBRLHarvester`).
-  - **Screener.in**: Sole source for credit rating documents.
-  - **ValuePickr**: Source for forum thread data and discussions.
-
-## [4.0.0] - 2026-02-08
-
-### Breaking Changes
-- **Skill Location**: Moved agent skill from `src/knowledgelm/data/SKILL.md` to `.agent/skills/knowledgelm-nse/SKILL.md` following skill-creator best practices for directory-based structure with bundled resources
-
-### Features
-- **Self-Upgradeable Skill**: Skill can now self-upgrade by downloading latest version from GitHub raw URL
-- **Bundled Resources**: Added `references/` directory with NotebookLM audio overview prompt template for fundamental analysis
-- **Enhanced NotebookLM Integration**: 
-  - Comprehensive version management for both notebooklm-py package and skill
-  - Uses `uv tool upgrade` for package updates
-  - Always runs `notebooklm skill install` to ensure skill is current
-  - Handles browser extras conditionally for first-time authentication
-  - Vendor-agnostic approach for different AI agent skills directories
-- **Package Upgrade**: Added `uv tool upgrade knowledgelm` to Installation section
-
-### Documentation
-- **Skill Improvements**: Streamlined skill to be principle-based rather than task-like, emphasizing `--help` discovery over prescriptive commands
-- **Architecture Updates**: Updated `.context/ARCHITECTURE.md` to reflect new `.agent/` directory structure with separate "Agent Resources" subgraph in mermaid diagram
-- **Changelog Updates**: Updated skill path references throughout `.context/` artifacts
-
-### Cleanup
-- Removed legacy pip artifacts (root `__pycache__`, committed `.coverage`, and `nse_cookies_requests.pkl`)
-- Updated documentation and agent skill to prefer `uv` over `pip`
-
-## [3.0.0] - 2026-01-26
-
-### Features
-- **CLI Interface**: New `knowledgelm` CLI with commands:
-  - `download SYMBOL --from DATE --to DATE`: Batch download filings
-  - `list-categories`: Show available filing types
-  - `list-files DIRECTORY --json`: List downloaded files for NotebookLM integration
-- **AI Agent Skill**: Bundled `SKILL.md` at `.agent/skills/knowledgelm-nse/SKILL.md` following [Agent Skills](https://agentskills.io) open standard
-- **NotebookLM Integration**: Skill includes workflow for adding downloads to NotebookLM notebooks via notebooklm-py
-
-### Architecture
-- **CLI-First Design**: All operations accessible via CLI with `--help` discovery and `--json` output for agent parsing
-- **Skill Maintenance**: SKILL.md uses `--help` discovery instead of hardcoded commands (reduces sync burden)
-
-### Dependencies
-- Added `click>=8.1.0` for CLI
-
-### Documentation
-- Updated README with CLI usage, agent skill installation prompt (LLM-agnostic)
-
-
-## [2.0.0] - 2026-01-26
-
-### Security
-- **SSL Verification**: Enabled SSL verification for Screener.in requests to prevent MitM attacks.
-- **Input Sanitization**: Implemented `sanitize_folder_name` to prevent path traversal vulnerabilities in download folders.
-
-### Architecture
-- **Modular Design**: Split monolithic `filings_downloader.py` into:
-  - `core/service.py`: Business logic and orchestration.
-  - `data/nse_adapter.py`: Wrapper for NSE library.
-  - `data/screener_adapter.py`: Secure scraper for Screener.in.
-  - `utils/file_utils.py`: Shared utilities.
-  - `config.py`: Centralized configuration.
-- **UI Decoupling**: Refactored `app.py` to delegate logic to `KnowledgeService`.
-- **Validation**: Added early-exit symbol validation using `nse.equityQuote()` to prevent invalid API calls.
-- **Cleanup**: Removed intermediate `{symbol}_announcements.json` dump from output folder (data is ephemeral/in-memory).
-
-### Features
-- **Selenium Support**: Integrated `selenium` and `webdriver-manager` for headless Chrome operations to handle dynamic content.
-- **Robust Scraper**: Added fallback logic to handle various content types (PDF vs HTML) from Screener.in.
-- **Direct PDF Resolution**: implemented direct resolution for ICRA reports to bypass viewers.
-- **High-Fidelity HTML Conversion**: Replaced `markdownify` with Selenium-based "Print to PDF" for better report quality.
-
-### Documentation
-- **Walkthrough**: Added a browser recording demonstrating app functionalities to `README.md`.
-- **Assets**: Created `assets/` directory for media files.
-- **Context Artifacts**: Added `.context/` documentation artifacts (DESIGN, ARCHITECTURE, CHANGELOG).
-
-### Improvements
-- **Logging**: Redirected library logs (NSE, Selenium) to application logger and reduced noise.
-- **Project Structure**: Adopted `src/` layout.
-- **Dependency Management**: Migrated to `pyproject.toml` and `uv`.
-- **Code Quality**: Added `tests/` directory, configured `ruff`, and applied Google-style docstrings.
-
-### Fixed
-- **Empty ICRA Reports**: Resolved by bypassing JS viewers.
-- **Missing Dependencies**: Added `beautifulsoup4`, `markdownify`, `requests`.
-- **Duplicate Imports**: Cleaned up `FilingsDownloader.py` (now refactored).
-
----
-
-## Initial Release
-
-### Features
-- Batch download NSE announcements by category
-- Credit rating extraction from Screener.in
-- Individual filing views (Resignations, Reg 30, Press Releases)
-- Annual report download (date range or all)
-- Streamlit UI with status feedback
+- **Silent CLI Execution**: Refactored `cli.py` to route all informational and error messages to `knowledgelm.log` when JSON output is not requested.
+- **ValuePickr PDF Generator Cleanup**: Migrated to native Selenium Manager and implemented Selenium silencing.
+...

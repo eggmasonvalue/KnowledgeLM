@@ -100,7 +100,9 @@ class KnowledgeService:
             if not options.get(config["enabled_arg"], False):
                 continue
 
-            label = config["label"]
+            # label = config["label"]
+            # use keys since this is returned to the caller
+            label = cat_key
             logger.info(f"Processing category: {label}")
 
             # Special Case: Annual Reports

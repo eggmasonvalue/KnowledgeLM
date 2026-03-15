@@ -12,6 +12,8 @@ from knowledgelm.config import (
 )
 from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
 from knowledgelm.core.service import KnowledgeService
+from knowledgelm.utils.text_utils import pluralize
+
 
 # Configure logging — route to file, keep terminal clean
 logging.basicConfig(
@@ -150,19 +152,14 @@ if st.button("Download", type="primary", use_container_width=False):
             st.session_state.category_counts = category_counts
 
             # constructing detailed status summary
-            def pluralize(count, singular):
-                if count == 1:
-                    return f"{count} {singular}"
-                if singular.endswith("y"):
-                    return f"{count} {singular[:-1]}ies"
-                return f"{count} {singular}s"
-
             processed_counts = []
+
             for cat_key, config in DOWNLOAD_CATEGORIES_CONFIG.items():
                 label = config["label"]
                 count = category_counts.get(label, 0)
                 if count > 0:
-                    processed_counts.append(f"• {pluralize(count, label)}")
+                    processed_counts.append(f"• {count} {pluralize(label, count)}")
+
 
             if category_counts.get("ValuePickr Thread", 0) > 0:
                 processed_counts.append("• 1 ValuePickr Thread")

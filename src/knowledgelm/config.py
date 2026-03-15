@@ -42,50 +42,50 @@ SCREENER_LINKS_SELECTOR = "ul.list-links a[href]"
 DOWNLOAD_CATEGORIES_CONFIG = {
     "transcripts": {
         "enabled_arg": "download_transcripts",
-        "label": "analyst call transcript",
+        "label": "Analyst Call Transcript",
         "folder_name": "transcripts",
         "shorthand": "Transcript",
     },
     "investor_presentations": {
         "enabled_arg": "download_investor_presentations",
-        "label": "investor presentation",
+        "label": "Investor Presentation",
         "folder_name": "investor_presentations",
         "shorthand": "Presentation",
     },
     "press_releases": {
         "enabled_arg": "download_press_releases",
-        "label": "press release",
+        "label": "Press Release",
         "folder_name": "press_releases",
         "shorthand": "PR",
     },
     "credit_rating": {
         "enabled_arg": "download_credit_rating",
-        "label": "credit rating",
+        "label": "Credit Rating Report",
         "folder_name": "credit_rating",
         "shorthand": "CR",
     },
     "related_party_txns": {
         "enabled_arg": "download_related_party_txns",
-        "label": "related party transaction",
+        "label": "Related Party Transaction",
         "folder_name": "related_party_txns",
         "shorthand": "RPT",
     },
     "annual_reports": {
         "enabled_arg": "download_annual_reports",
-        "label": "annual report",
+        "label": "Annual Report",
         "folder_name": "annual_reports",
         "shorthand": "AR",
     },
     "issue_documents": {
         "enabled_arg": "download_issue_documents",
-        "label": "issue document",
+        "label": "Share Issuance Document",
         "folder_name": "share_issuance_docs",
         "shorthand": "IssueDoc",
     },
     # XBRL-based categories
     "personnel": {
         "enabled_arg": "download_personnel",
-        "label": "personnel change",
+        "label": "Personnel Change",
         "folder_name": "personnel",
         "shorthand": "Personnel",
         "is_xbrl": True,
@@ -94,7 +94,7 @@ DOWNLOAD_CATEGORIES_CONFIG = {
     },
     "key_announcements": {
         "enabled_arg": "download_key_announcements",
-        "label": "key announcement",
+        "label": "Key Announcement",
         "folder_name": "key_announcements",
         "shorthand": "KeyAnn",
         "is_xbrl": True,
@@ -103,7 +103,7 @@ DOWNLOAD_CATEGORIES_CONFIG = {
     },
     "shm": {
         "enabled_arg": "download_shm",
-        "label": "shareholder meeting",
+        "label": "Shareholder Meeting Notice",
         "folder_name": "shareholder_meetings",
         "shorthand": "SHM",
         "is_xbrl": True,

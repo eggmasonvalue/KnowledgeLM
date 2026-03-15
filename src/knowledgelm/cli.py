@@ -16,6 +16,8 @@ import click
 from knowledgelm.config import DATE_FORMAT_YMD, DOWNLOAD_CATEGORIES_CONFIG
 from knowledgelm.core.forum import ForumClient, PDFGenerator, ReferenceExtractor
 from knowledgelm.core.service import KnowledgeService
+from knowledgelm.utils.text_utils import pluralize
+
 
 
 def configure_logging():
@@ -44,7 +46,7 @@ def parse_date(date_str: str) -> datetime:
 
 
 @click.group()
-@click.version_option(version="4.2.1", prog_name="knowledgelm")
+@click.version_option(version="5.1.0", prog_name="knowledgelm")
 def main():
     """KnowledgeLM CLI: Data Extraction Interface for LLM Agents.
 
@@ -119,8 +121,8 @@ def nse(
         "symbol": "HDFCBANK",
         "output_directory": "/absolute/path/to/HDFCBANK_sources",
         "date_range": {"from": "2024-01-01", "to": "2024-01-31"},
-        "downloads": {"transcript": 2, "personnel change": 1},
-        "total_files": 3
+        "downloads": {"shm": 2, "personnel": 1},
+        "total_filings": 3
       }
     """
     configure_logging()
@@ -170,7 +172,7 @@ def nse(
             "output_directory": str(Path.cwd() / folder_name),
             "date_range": {"from": from_date, "to": to_date},
             "downloads": counts,
-            "total_files": sum(counts.values()),
+            "total_filings": sum(counts.values()),
         }
 
         click.echo(json.dumps(result, indent=2))
@@ -180,8 +182,9 @@ def nse(
         logger.info(f"  Output: {result['output_directory']}")
         logger.info("  Categories:")
         for cat, count in counts.items():
-            logger.info(f"    - {cat}: {count} files")
-        logger.info(f"  Total: {result['total_files']} files")
+            logger.info(f"    - {count} {pluralize(cat, count)}")
+        logger.info(f"  Total: {result['total_files']} {pluralize('file', result['total_files'])}")
+
         logger.info(f"JSON Result: {json.dumps(result)}")
 
     except ValueError as e:
@@ -279,20 +282,23 @@ def list_datasets():
     Output Schema (JSON):
       {
         "datasets": {
-          "transcripts": "Analyst call transcripts",
-          "annual_reports": "Annual reports",
-          "personnel": "Personnel changes (XBRL)",
-          "shm": "Shareholder meetings (XBRL)"
+          "transcripts": "Analyst Call Transcripts",
+          "annual_reports": "Annual Reports",
+          "personnel": "Personnel Changes (XBRL/JSON)",
+          "shm": "Shareholder Meeting Notices (XBRL/JSON)"
         }
       }
+
     """
     configure_logging()
 
     datasets = {}
     for cat, cfg in DOWNLOAD_CATEGORIES_CONFIG.items():
-        datasets[cat] = cfg["label"].title()
+        label = pluralize(cfg["label"])
         if cfg.get("is_xbrl"):
-            datasets[cat] += " (XBRL/JSON)"
+            label += " (XBRL/JSON)"
+        datasets[cat] = label
+
 
     result = {"datasets": datasets}
 
@@ -417,12 +423,14 @@ def convert_dir(directory: str):
 
     pdf_files = list(target_dir.glob("*.pdf"))
     if not pdf_files:
-        msg = f"No .pdf files found in directory: {directory}"
+        msg = f"No .pdf {pluralize('file', 0)} found in directory: {directory}"
         logger.warning(msg)
+
         click.echo(json.dumps({"error": msg, "success": False}))
         sys.exit(1)
 
-    logger.info(f"Found {len(pdf_files)} PDFs in {target_dir.name}. Starting conversion...")
+    logger.info(f"Found {len(pdf_files)} {pluralize('PDF', len(pdf_files))} in {target_dir.name}. Starting conversion...")
+
 
     start_time = time.time()
     results = []

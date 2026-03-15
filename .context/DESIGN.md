@@ -132,4 +132,3 @@ Overhaul of the XBRL processing pipeline to use native parsing:
 - provide markdown option in CLI that uses the library to iterate through all the .pdfs and convert to .md
 - performance audit
 - security audit, especially input validation
-- skill is way out of date

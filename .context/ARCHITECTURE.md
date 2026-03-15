@@ -27,7 +27,9 @@ graph TD
     subgraph Utils["Utilities"]
         CONF[src/knowledgelm/config.py]
         F_UTIL[src/knowledgelm/utils/file_utils.py]
+        T_UTIL[src/knowledgelm/utils/text_utils.py]
     end
+
 
     subgraph External["External Sources"]
         NSE_LIB[NSE API<br/>nse library]
@@ -49,6 +51,9 @@ graph TD
     CLI .-> SKILL
     APP ..-> CONF
     SRV ..-> CONF
+    CLI --> T_UTIL
+    APP --> T_UTIL
+
 ```
 
 ## Project Structure
@@ -69,7 +74,9 @@ KnowledgeLM/
 │       │   ├── nse_adapter.py    # NSE Library Wrapper
 │       │   └── screener_adapter.py # Screener Scraper
 │       └── utils/
-│           └── file_utils.py     # Sanitization & paths
+│           ├── file_utils.py     # Sanitization & paths
+│           └── text_utils.py     # Pluralization & formatting
+
 ├── tests/
 │   ├── conftest.py
 │   ├── test_cli.py
@@ -147,6 +154,10 @@ The `NSEXBRLHarvester` provides granular, field-level parsing of corporate annou
 
 ### utils/file_utils.py
 - **`sanitize_folder_name`**: Prevents path traversal security issues.
+
+### utils/text_utils.py
+- **`pluralize`**: Centralized pluralization engine used by both CLI and UI for professional output formatting (e.g., "1 PDF" vs "2 PDFs").
+
 
 ## Context Management Strategy
 

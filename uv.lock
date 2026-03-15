@@ -654,7 +654,7 @@ wheels = [
 
 [[package]]
 name = "knowledgelm"
-version = "5.0.0"
+version = "5.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -963,7 +963,7 @@ server = [
 [[package]]
 name = "nse-xbrl-parser"
 version = "0.1.0"
-source = { git = "https://github.com/eggmasonvalue/nse-xbrl-parser.git#d1f2aca994ae23dbdeb5555881a9f58f6bcc8cb2" }
+source = { git = "https://github.com/eggmasonvalue/nse-xbrl-parser.git#baf0e358d4d1bf9cbaae3d56c38a9680d9db6153" }
 dependencies = [
     { name = "arelle-release" },
     { name = "bs4" },
